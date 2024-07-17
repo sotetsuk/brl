@@ -218,16 +218,16 @@ def train(config, rng, optimizer):
 
         if config.self_play:
             params_list = sorted([path for path in os.listdir(save_model_path) if "params" in path])
-            # if (len(params_list) != 0) and np.random.binomial(
-            #     size=1, n=1, p=config.ratio_model_zoo
-            # ):
-            params_path = np.random.choice(params_list)
-            print(f"opposite params: {params_path}")
-            with open(os.path.join(save_model_path, params_path), "rb") as f:
-                opp_params = pickle.load(f)
-            # else:
-            #     print("opposite params: latest")
-            #     opp_params = runner_state[0]
+            if (len(params_list) != 0) and np.random.binomial(
+                size=1, n=1, p=config.ratio_model_zoo
+            ):
+                params_path = np.random.choice(params_list)
+                print(f"opposite params: {params_path}")
+                with open(os.path.join(save_model_path, params_path), "rb") as f:
+                    opp_params = pickle.load(f)
+            else:
+                print("opposite params: latest")
+                opp_params = runner_state[0]
 
         time1 = time.time()
         runner_state, traj_batch = roll_out(
