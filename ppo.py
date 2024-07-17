@@ -296,11 +296,6 @@ def train(config, rng, optimizer):
                 print("opposite params: latest")
                 opp_params = runner_state[0]
 
-        (imp_opp_before, _, _), _, _ = jit_simple_duplicate_evaluate(
-            team1_params=runner_state[0],
-            team2_params=opp_params,
-            rng_key=eval_rng,
-        )
         time1 = time.time()
         runner_state, traj_batch = roll_out(
             runner_state=runner_state, opp_params=opp_params
@@ -315,11 +310,6 @@ def train(config, rng, optimizer):
             targets=targets,
         )
         time4 = time.time()
-        (imp_opp_after, _, _), _, _ = jit_simple_duplicate_evaluate(
-            team1_params=runner_state[0],
-            team2_params=opp_params,
-            rng_key=eval_rng,
-        )
 
         print(f"rollout time: {time2 - time1}")
         print(f"calc gae time: {time3 - time2}")
@@ -350,8 +340,6 @@ def train(config, rng, optimizer):
                     (i + 1) * config.update_epochs * config.num_minibatches
                 )
             ),
-            "train/imp_opp_before": float(imp_opp_before),
-            "train/imp_opp_after": float(imp_opp_after),
             "board_num": int(runner_state[4]),
             "steps": steps,
         }
