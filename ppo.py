@@ -198,7 +198,7 @@ def train(config, rng, optimizer):
         opp_params = params
     if config.save_model:
         save_model_path = os.path.join(config.log_path, config.exp_name, config.save_model_path)
-        os.mkdirs(save_model_path, exist_ok=True)
+        os.makedirs(save_model_path, exist_ok=True)
     print("start training")
     for i in range(config.num_updates):
         print(f"--------------iteration {i}---------------")
