@@ -73,8 +73,6 @@ class PPOConfig(BaseModel):
     vf_coef: float = 0.5  # Coefficient for value loss.
     # PPO code optimization
     value_clipping: bool = True  # Whether to apply value clipping.
-    global_gradient_clipping: bool = True  # Whether to apply global gradient clipping.
-    anneal_lr: bool = False  # Whether to anneal the learning rate.
     reward_scaling: bool = False  # Whether to scale rewards.
     max_grad_norm: float = 0.5  # Maximum norm for gradients.
     reward_scale: float = 7600  # Hyperparameter for normalizing rewards.
