@@ -139,15 +139,6 @@ def train(config, rng, optimizer):
     # MAKE EVAL
     rng, eval_rng = jax.random.split(rng)
     eval_env = BridgeBidding("dds_results/test_000.npy")
-    simple_evaluate = make_simple_evaluate(
-        eval_env=eval_env,
-        team1_activation=config.actor_activation,
-        team1_model_type=config.actor_model_type,
-        team2_activation=config.eval_opp_activation,
-        team2_model_type=config.eval_opp_model_type,
-        team2_model_path=config.eval_opp_model_path,
-        num_eval_envs=config.num_eval_envs,
-    )
     simple_duplicate_evaluate = make_simple_duplicate_evaluate(
         eval_env=eval_env,
         team1_activation=config.actor_activation,
@@ -167,7 +158,6 @@ def train(config, rng, optimizer):
         game_mode=config.game_mode,
         duplicate=True,
     )
-    jit_simple_evaluate = jax.jit(simple_evaluate)
     jit_simple_duplicate_evaluate = jax.jit(simple_duplicate_evaluate)
     jit_diplicate_evaluate = jax.jit(duplicate_evaluate)
     jit_make_evaluate_log = jax.jit(make_evaluate_log)
@@ -251,10 +241,6 @@ def train(config, rng, optimizer):
                     pickle.dump(runner_state[0], writer)
 
         # eval
-        time_eval_sta = time.time()
-        R = jit_simple_evaluate(runner_state[0], eval_rng)
-        time_eval_end = time.time()
-        print(f"eval time: {time_eval_end-time_eval_sta}")
         if i % config.num_eval_step == 0:
             time_du_sta = time.time()
             log_info, _, _ = jit_diplicate_evaluate(runner_state[0], eval_rng)
@@ -327,7 +313,6 @@ def train(config, rng, optimizer):
 
         # make log
         log = {
-            "train/score": float(R),
             "train/total_loss": float(total_loss[-1][-1]),
             "train/value_loss": float(value_loss[-1][-1]),
             "train/loss_actor": float(loss_actor[-1][-1]),
