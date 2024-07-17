@@ -311,31 +311,10 @@ if __name__ == "__main__":
         save_code=True,
     )
 
-    def linear_schedule(count):
-        frac = (
-            1.0
-            - (count // (config.num_minibatches * config.update_epochs))
-            / config.num_updates
-        )
-        return config.lr * frac
-
-    if config.anneal_lr:
-        if config.global_gradient_clipping:
-            optimizer = optax.chain(
-                optax.clip_by_global_norm(config.max_grad_norm),
-                optax.adam(learning_rate=linear_schedule, eps=1e-5),
-            )
-        else:
-            optimizer = optax.adam(learning_rate=linear_schedule, eps=1e-5)
-
-    else:
-        if config.global_gradient_clipping:
-            optimizer = optax.chain(
-                optax.clip_by_global_norm(config.max_grad_norm),
-                optax.adam(config.lr, eps=1e-5),
-            )
-        else:
-            optimizer = optax.adam(config.lr, eps=1e-5)
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(config.max_grad_norm),
+        optax.adam(config.lr, eps=1e-5),
+    )
 
     rng = jax.random.PRNGKey(config.seed)
     sta = time.time()
