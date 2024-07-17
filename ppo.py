@@ -22,7 +22,7 @@ from pydantic import BaseModel
 import wandb
 
 from src.models import make_forward_pass
-from src.evaluation import make_simple_duplicate_evaluate,
+from src.evaluation import make_simple_duplicate_evaluate
 from src.roll_out import make_roll_out
 from src.gae import make_calc_gae
 from src.update import make_update_step
