@@ -139,12 +139,6 @@ def train(config, rng, optimizer):
         model_type=config.actor_model_type,
     )
 
-    # INIT ENV
-    train_dds_results_list = sorted(
-        [path for path in os.listdir(config.dds_results_dir) if "train" in path]
-    )
-
-    # dds_resultsの異なるhash tableをloadしたenvを用意
     init = jax.jit(jax.vmap(env.init))
     roll_out = jax.jit(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
     calc_gae = jax.jit(make_calc_gae(config, actor_forward_pass))
@@ -156,10 +150,7 @@ def train(config, rng, optimizer):
     reset_rng = jax.random.split(_rng, config.num_envs)
     env_state = init(reset_rng)
 
-    hash_index_list = np.arange(len(train_dds_results_list))
     steps = 0
-    hash_index = 0
-    board_count = 0
     terminated_count = 0
     rng, _rng = jax.random.split(rng)
     runner_state = (
