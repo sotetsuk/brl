@@ -76,7 +76,6 @@ class PPOConfig(BaseModel):
     opp_model_path: str = None  # Model path of the opponent during training, not needed if self-play is used.
     ratio_model_zoo: float = 0  # Ratio from 0 to 1 for how often FSP is used in self-play.
     num_model_zoo: int = 100_000  # Maximum number of past models used for FSP.
-    threshold_model_zoo: float = -24  # Threshold for using a trained model in FSP, set to -24 to use all trained models.
     prior_t: float = 0.1  # Softmax temperature parameter for sampling probability in PFSP.
     num_prioritized_envs: int = 100  # Number of boards to play for calculating priority in PFSP.
     # GAE config
@@ -264,47 +263,39 @@ def train(config, rng, optimizer):
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
         if config.self_play:
-            (imp_opp, _, _), _, _ = jit_simple_duplicate_evaluate(
-                team1_params=runner_state[0],
-                team2_params=opp_params,
-                rng_key=eval_rng,
-            )
-            if imp_opp >= config.threshold_model_zoo:
-                params_list = sorted(
-                    [
-                        path
-                        for path in os.listdir(
-                            os.path.join(
-                                config.log_path,
-                                config.exp_name,
-                                config.save_model_path,
-                            )
-                        )
-                        if "params" in path
-                    ]
-                )
-                if (len(params_list) != 0) and np.random.binomial(
-                    size=1, n=1, p=config.ratio_model_zoo
-                ):
-                    params_path = np.random.choice(params_list)
-                    print(f"opposite params: {params_path}")
-                    opp_params = pickle.load(
-                        open(
-                            os.path.join(
-                                config.log_path,
-                                config.exp_name,
-                                config.save_model_path,
-                                params_path,
-                            ),
-                            "rb",
+            params_list = sorted(
+                [
+                    path
+                    for path in os.listdir(
+                        os.path.join(
+                            config.log_path,
+                            config.exp_name,
+                            config.save_model_path,
                         )
                     )
-                else:
-                    print("opposite params: latest")
-                    opp_params = runner_state[0]
+                    if "params" in path
+                ]
+            )
+            if (len(params_list) != 0) and np.random.binomial(
+                size=1, n=1, p=config.ratio_model_zoo
+            ):
+                params_path = np.random.choice(params_list)
+                print(f"opposite params: {params_path}")
+                opp_params = pickle.load(
+                    open(
+                        os.path.join(
+                            config.log_path,
+                            config.exp_name,
+                            config.save_model_path,
+                            params_path,
+                        ),
+                        "rb",
+                    )
+                )
             else:
                 print("opposite params: latest")
-                opp_params = opp_params
+                opp_params = runner_state[0]
+
         (imp_opp_before, _, _), _, _ = jit_simple_duplicate_evaluate(
             team1_params=runner_state[0],
             team2_params=opp_params,
