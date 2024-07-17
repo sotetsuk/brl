@@ -101,16 +101,14 @@ class PPOConfig(BaseModel):
     illegal_action_l2norm_coef: float = 0  # Coefficient for L2 norm to suppress output for illegal actions.
 
 
-args = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
-
 
 def linear_schedule(count):
     frac = (
         1.0
-        - (count // (config["num_minibatches"] * config["update_epochs"]))
-        / config["num_updates"]
+        - (count // (config.num_minibatches * config.update_epochs))
+        / config.num_updates
     )
-    return config["lr"] * frac
+    return config.lr * frac
 
 
 if args.anneal_lr:
@@ -143,19 +141,19 @@ class Transition(NamedTuple):
 
 
 def train(config, rng):
-    config["num_updates"] = (
-        config["total_timesteps"] // config["num_steps"] // config["num_envs"]
+    config.num_updates = (
+        config.total_timesteps // config.num_steps // config.num_envs
     )
-    config["num_minibatches"] = (
-        config["num_envs"] * config["num_steps"] // config["minibatch_size"]
+    config.num_minibatches = (
+        config.num_envs * config.num_steps // config.minibatch_size
     )
     if not os.path.isdir("dds_results"):
         download_dds_results()
     env = BridgeBidding()
 
     actor_forward_pass = make_forward_pass(
-        activation=config["actor_activation"],
-        model_type=config["actor_model_type"],
+        activation=config.actor_activation,
+        model_type=config.actor_model_type,
     )
     # INIT NETWORK
     rng, _rng = jax.random.split(rng)
@@ -164,39 +162,39 @@ def train(config, rng):
     opt_state = optimizer.init(params=params)  # DONE
 
     # LOAD INITIAL MODEL
-    if config["load_initial_model"]:
-        params = pickle.load(open(config["initial_model_path"], "rb"))
-        print(f"load initial params for actor: {config['initial_model_path']}")
+    if config.load_initial_model:
+        params = pickle.load(open(config.initial_model_path, "rb"))
+        print(f"load initial params for actor: {config.initial_model_path}")
 
     # MAKE EVAL
     rng, eval_rng = jax.random.split(rng)
     eval_env = BridgeBidding("dds_results/test_000.npy")
     simple_evaluate = make_simple_evaluate(
         eval_env=eval_env,
-        team1_activation=config["actor_activation"],
-        team1_model_type=config["actor_model_type"],
-        team2_activation=config["eval_opp_activation"],
-        team2_model_type=config["eval_opp_model_type"],
-        team2_model_path=config["eval_opp_model_path"],
-        num_eval_envs=config["num_eval_envs"],
+        team1_activation=config.actor_activation,
+        team1_model_type=config.actor_model_type,
+        team2_activation=config.eval_opp_activation,
+        team2_model_type=config.eval_opp_model_type,
+        team2_model_path=config.eval_opp_model_path,
+        num_eval_envs=config.num_eval_envs,
     )
     simple_duplicate_evaluate = make_simple_duplicate_evaluate(
         eval_env=eval_env,
-        team1_activation=config["actor_activation"],
-        team1_model_type=config["actor_model_type"],
-        team2_activation=config["actor_activation"],
-        team2_model_type=config["actor_model_type"],
-        num_eval_envs=config["num_prioritized_envs"],
+        team1_activation=config.actor_activation,
+        team1_model_type=config.actor_model_type,
+        team2_activation=config.actor_activation,
+        team2_model_type=config.actor_model_type,
+        num_eval_envs=config.num_prioritized_envs,
     )
     duplicate_evaluate = make_evaluate(
         eval_env=eval_env,
-        team1_activation=config["actor_activation"],
-        team1_model_type=config["actor_model_type"],
-        team2_activation=config["eval_opp_activation"],
-        team2_model_type=config["eval_opp_model_type"],
-        team2_model_path=config["eval_opp_model_path"],
-        num_eval_envs=config["num_eval_envs"],
-        game_mode=config["game_mode"],
+        team1_activation=config.actor_activation,
+        team1_model_type=config.actor_model_type,
+        team2_activation=config.eval_opp_activation,
+        team2_model_type=config.eval_opp_model_type,
+        team2_model_path=config.eval_opp_model_path,
+        num_eval_envs=config.num_eval_envs,
+        game_mode=config.game_mode,
         duplicate=True,
     )
     jit_simple_evaluate = jax.jit(simple_evaluate)
@@ -207,8 +205,8 @@ def train(config, rng):
     # INIT UPDATE FUNCTION
 
     opp_forward_pass = make_forward_pass(
-        activation=config["opp_activation"],
-        model_type=config["opp_model_type"],
+        activation=config.opp_activation,
+        model_type=config.opp_model_type,
     )
 
     # INIT ENV
@@ -216,12 +214,12 @@ def train(config, rng):
     init_list = []
     roll_out_list = []
     train_dds_results_list = sorted(
-        [path for path in os.listdir(config["dds_results_dir"]) if "train" in path]
+        [path for path in os.listdir(config.dds_results_dir) if "train" in path]
     )
 
     # dds_resultsの異なるhash tableをloadしたenvを用意
     for file in train_dds_results_list:
-        env = BridgeBidding(os.path.join(config["dds_results_dir"], file))
+        env = BridgeBidding(os.path.join(config.dds_results_dir, file))
         env_list.append(env)
         init_list.append(jax.jit(jax.vmap(env.init)))
         roll_out_list.append(
@@ -233,7 +231,7 @@ def train(config, rng):
     )
 
     rng, _rng = jax.random.split(rng)
-    reset_rng = jax.random.split(_rng, config["num_envs"])
+    reset_rng = jax.random.split(_rng, config.num_envs)
     init = init_list[0]
     roll_out = roll_out_list[0]
     env_state = init(reset_rng)
@@ -253,29 +251,29 @@ def train(config, rng):
         _rng,
     )  # DONE
 
-    if not config["self_play"]:
-        opp_params = pickle.load(open(config["eval_opp_model_path"], "rb"))
+    if not config.self_play:
+        opp_params = pickle.load(open(config.eval_opp_model_path, "rb"))
     else:
         opp_params = params
-    if config["save_model"]:
+    if config.save_model:
         os.mkdir(
             os.path.join(
-                config["log_path"],
-                config["exp_name"],
-                config["save_model_path"],
+                config.log_path,
+                config.exp_name,
+                config.save_model_path,
             )
         )
     print("start training")
-    for i in range(config["num_updates"]):
+    for i in range(config.num_updates):
         print(f"--------------iteration {i}---------------")
         # save model
-        if (i != 0) and (i % config["save_model_interval"] == 0):
-            if config["save_model"]:
+        if (i != 0) and (i % config.save_model_interval == 0):
+            if config.save_model:
                 with open(
                     os.path.join(
-                        config["log_path"],
-                        config["exp_name"],
-                        config["save_model_path"],
+                        config.log_path,
+                        config.exp_name,
+                        config.save_model_path,
                         f"params-{i:08}.pkl",
                     ),
                     "wb",
@@ -287,37 +285,37 @@ def train(config, rng):
         R = jit_simple_evaluate(runner_state[0], eval_rng)
         time_eval_end = time.time()
         print(f"eval time: {time_eval_end-time_eval_sta}")
-        if i % config["num_eval_step"] == 0:
+        if i % config.num_eval_step == 0:
             time_du_sta = time.time()
             log_info, _, _ = jit_diplicate_evaluate(runner_state[0], eval_rng)
             eval_log = jit_make_evaluate_log(log_info)
             time_du_end = time.time()
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
-        if config["self_play"]:
+        if config.self_play:
             (imp_opp, _, _), _, _ = jit_simple_duplicate_evaluate(
                 team1_params=runner_state[0],
                 team2_params=opp_params,
                 rng_key=eval_rng,
             )
-            if imp_opp >= config["threshold_model_zoo"]:
+            if imp_opp >= config.threshold_model_zoo:
                 params_list = sorted(
                     [
                         path
                         for path in os.listdir(
                             os.path.join(
-                                config["log_path"],
-                                config["exp_name"],
-                                config["save_model_path"],
+                                config.log_path,
+                                config.exp_name,
+                                config.save_model_path,
                             )
                         )
                         if "params" in path
                     ]
                 )
                 if (len(params_list) != 0) and np.random.binomial(
-                    size=1, n=1, p=config["ratio_model_zoo"]
+                    size=1, n=1, p=config.ratio_model_zoo
                 ):
-                    if config["prioritized_fictitious"]:
+                    if config.prioritized_fictitious:
                         league_sta = time.time()
                         win_rate_list = np.zeros(len(params_list))
                         imp_list = np.zeros(len(params_list))
@@ -326,9 +324,9 @@ def train(config, rng):
                             team2_params = pickle.load(
                                 open(
                                     os.path.join(
-                                        config["log_path"],
-                                        config["exp_name"],
-                                        config["save_model_path"],
+                                        config.log_path,
+                                        config.exp_name,
+                                        config.save_model_path,
                                         params_list[i],
                                     ),
                                     "rb",
@@ -347,7 +345,7 @@ def train(config, rng):
                         def softmax(x):
                             exp_values = np.exp(
                                 (x - np.max(x, axis=-1, keepdims=True))
-                                / config["prior_t"]
+                                / config.prior_t
                             )
                             probabilities = exp_values / np.sum(
                                 exp_values, axis=-1, keepdims=True
@@ -365,9 +363,9 @@ def train(config, rng):
                     opp_params = pickle.load(
                         open(
                             os.path.join(
-                                config["log_path"],
-                                config["exp_name"],
-                                config["save_model_path"],
+                                config.log_path,
+                                config.exp_name,
+                                config.save_model_path,
                                 params_path,
                             ),
                             "rb",
@@ -407,7 +405,7 @@ def train(config, rng):
         print(f"rollout time: {time2 - time1}")
         print(f"calc gae time: {time3 - time2}")
         print(f"update time: {time4 - time3}")
-        steps += config["num_envs"] * config["num_steps"]
+        steps += config.num_envs * config.num_steps
 
         total_loss, (
             value_loss,
@@ -430,7 +428,7 @@ def train(config, rng):
             "train/approx_kl": float(approx_kl[-1][-1]),
             "train/lr": float(
                 linear_schedule(
-                    (i + 1) * config["update_epochs"] * config["num_minibatches"]
+                    (i + 1) * config.update_epochs * config.num_minibatches
                 )
             ),
             "train/imp_opp_before": float(imp_opp_before),
@@ -439,11 +437,11 @@ def train(config, rng):
             "steps": steps,
         }
         pprint(log)
-        if i % config["num_eval_step"] == 0:
+        if i % config.num_eval_step == 0:
             log = {**log, **eval_log}
-        if config["track"]:
+        if config.track:
             wandb.log(log)
-        if (runner_state[4] - board_count) // config["hash_size"] >= 1:
+        if (runner_state[4] - board_count) // config.hash_size >= 1:
             hash_index += 1
             print(f"board count: {runner_state[4] - board_count}")
             board_count = runner_state[4]
@@ -457,7 +455,7 @@ def train(config, rng):
             init = init_list[hash_index_list[hash_index]]
             roll_out = roll_out_list[hash_index_list[hash_index]]
             rng, _rng = jax.random.split(rng)
-            reset_rng = jax.random.split(_rng, config["num_envs"])
+            reset_rng = jax.random.split(_rng, config.num_envs)
 
             env_state = init(reset_rng)
             runner_state = (
@@ -468,12 +466,12 @@ def train(config, rng):
                 runner_state[4],
                 _rng,
             )
-    if config["save_model"]:
+    if config.save_model:
         with open(
             os.path.join(
-                config["log_path"],
-                config["exp_name"],
-                config["save_model_path"],
+                config.log_path,
+                config.exp_name,
+                config.save_model_path,
                 f"params-{i + 1:08}.pkl",
             ),
             "wb",
@@ -481,9 +479,9 @@ def train(config, rng):
             pickle.dump(runner_state[0], writer)
         with open(
             os.path.join(
-                config["log_path"],
-                config["exp_name"],
-                config["save_model_path"],
+                config.log_path,
+                config.exp_name,
+                config.save_model_path,
                 f"opt_state-{i + 1:08}.pkl",
             ),
             "wb",
@@ -494,16 +492,17 @@ def train(config, rng):
 
 
 if __name__ == "__main__":
-    if args.track:
+    config = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
+    if config.track:
         wandb.init(
             project="ppo-bridge",
-            name=args.exp_name,
-            config=args.model_dump(),
+            name=config.exp_name,
+            config=config.model_dump(),
             save_code=True,
         )
-        os.mkdir(os.path.join(config["log_path"], config["exp_name"]))
+        os.mkdir(os.path.join(config.log_path, config.exp_name))
         config_file = open(
-            os.path.join(config["log_path"], config["exp_name"], "config.json"),
+            os.path.join(config.log_path, config.exp_name, "config.json"),
             mode="w",
         )
         json.dump(
@@ -514,7 +513,7 @@ if __name__ == "__main__":
         )
         config_file.close()
     pprint(config)
-    rng = jax.random.PRNGKey(config["seed"])
+    rng = jax.random.PRNGKey(config.seed)
     sta = time.time()
     out = train(config, rng)
     end = time.time()
