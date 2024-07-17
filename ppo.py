@@ -506,7 +506,7 @@ if __name__ == "__main__":
             mode="w",
         )
         json.dump(
-            config,
+            config.dict(),
             config_file,
             indent=2,
             ensure_ascii=False,
