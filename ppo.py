@@ -102,7 +102,7 @@ def train(config, rng, optimizer):
     )
     if not os.path.isdir("dds_results"):
         download_dds_results()
-    env = BridgeBidding()
+    env = BridgeBidding("dds_results/dds_results_2.5M.npy")
 
     actor_forward_pass = make_forward_pass(
         activation=config.actor_activation,
