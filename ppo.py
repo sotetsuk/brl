@@ -38,146 +38,67 @@ print(jax.local_devices())
 
 
 class PPOConfig(BaseModel):
-    """
-    Configuration settings for PPO (Proximal Policy Optimization) training, evaluation, and logging.
-
-    Attributes:
-        seed                            Seed for random number generation.
-        lr                              Learning rate for Adam optimizer.
-        num_envs                        Number of parallel environments for actor rollout.
-        num_steps                       Number of steps per actor rollout.
-        total_timesteps                 Total number of steps by the end of training.
-        update_epochs                   Number of epochs for PPO update.
-        minibatch_size                  Minibatch size.
-        num_minibatches                 Number of minibatches per epoch.
-        num_updates                     Number of parameter updates until training concludes.
-
-        # dataset config
-        dds_results_dir                 Path to the directory where dds_results are located.
-        hash_size                       Hash size for dds_results.
-
-        # eval config
-        num_eval_envs                   Number of parallel environments for evaluation.
-        eval_opp_activation             Activation function of the opponent during evaluation.
-        eval_opp_model_type             Model type of the opponent during evaluation.
-        eval_opp_model_path             Path to the baseline model prepared for evaluation.
-        num_eval_step                   Interval for evaluation.
-
-        # log config
-        save_model                      Whether to save the trained model.
-        save_model_interval             Interval for saving the trained model.
-        log_path                        Path to the directory where training settings and trained models are saved.
-        exp_name                        Name of the experiment.
-        save_model_path                 Path to the directory where the trained model is saved.
-        track                           Whether to track training with wandb.
-
-        # actor config
-        load_initial_model              Whether to load a pretrained model as the initial values for the neural network.
-        initial_model_path              Path to the initial model for the neural network.
-        actor_activation                Activation function of the model being trained.
-        actor_model_type                Model type being trained.
-
-        # opposite config
-        game_mode                       Game mode for bridge, "competitive" or "free-run".
-        self_play                       Whether to engage in self-play.
-        opp_activation                  Activation function of the opponent during training, same as actor_activation if self-play is used.
-        opp_model_type                  Model type of the opponent during training, same as actor_model_type if self-play is used.
-        opp_model_path                  Model path of the opponent during training, not needed if self-play is used.
-        ratio_model_zoo                 Ratio from 0 to 1 for how often FSP is used in self-play.
-        num_model_zoo                   Maximum number of past models used for FSP.
-        threshold_model_zoo             Threshold for using a trained model in FSP, set to -24 to use all trained models.
-        prioritized_fictitious          Whether to use the improved method PFSP.
-        prior_t                         Softmax temperature parameter for sampling probability in PFSP.
-        num_prioritized_envs            Number of boards to play for calculating priority in PFSP.
-
-        # GAE config
-        gamma                           Discount factor gamma.
-        gae_lambda                      GAE lambda for advantage estimation.
-
-        # loss config
-        clip_eps                        Clipping epsilon for PPO.
-        ent_coef                        Entropy coefficient for exploration.
-        vf_coef                         Coefficient for value loss.
-
-        # PPO code optimization
-        value_clipping                  Whether to apply value clipping.
-        global_gradient_clipping        Whether to apply global gradient clipping.
-        anneal_lr                       Whether to anneal the learning rate.
-        reward_scaling                  Whether to scale rewards.
-        max_grad_norm                   Maximum norm for gradients.
-        reward_scale                    Hyperparameter for normalizing rewards.
-
-        # illegal action config
-        actor_illegal_action_mask       Whether to apply illegal action masking.
-        actor_illegal_action_penalty    Whether to apply a penalty for illegal actions.
-        illegal_action_penalty          Magnitude of penalty for illegal actions.
-        illegal_action_l2norm_coef      Coefficient for L2 norm to suppress output for illegal actions.
-    """
-
-    seed: int = 0
-    lr: float = 0.000001
-    num_envs: int = 8192
-    num_steps: int = 32
-    total_timesteps: int = 2_621_440_000
-    update_epochs: int = 10
-    minibatch_size: int = 1024
-    num_minibatches: int = 128
-    num_updates: int = 10000
+    seed: int = 0  # Seed for random number generation.
+    lr: float = 0.000001  # Learning rate for Adam optimizer.
+    num_envs: int = 8192  # Number of parallel environments for actor rollout.
+    num_steps: int = 32  # Number of steps per actor rollout.
+    total_timesteps: int = 2_621_440_000  # Total number of steps by the end of training.
+    update_epochs: int = 10  # Number of epochs for PPO update.
+    minibatch_size: int = 1024  # Minibatch size.
+    num_minibatches: int = 128  # Number of minibatches per epoch.
+    num_updates: int = 10000  # Number of parameter updates until training concludes.
     # dataset config
-    dds_results_dir: str = "dds_results"
-    hash_size: int = 100_000
+    dds_results_dir: str = "dds_results"  # Path to the directory where dds_results are located.
+    hash_size: int = 100_000  # Hash size for dds_results.
     # eval config
-    num_eval_envs: int = 10000
-    eval_opp_activation: str = "relu"
-    eval_opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"
-    eval_opp_model_path: str = None
-    num_eval_step: int = 10
+    num_eval_envs: int = 10000  # Number of parallel environments for evaluation.
+    eval_opp_activation: str = "relu"  # Activation function of the opponent during evaluation.
+    eval_opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during evaluation.
+    eval_opp_model_path: str = None  # Path to the baseline model prepared for evaluation.
+    num_eval_step: int = 10  # Interval for evaluation.
     # log config
-    save_model: bool = True
-    save_model_interval: int = 1
-    log_path: str = "rl_log"
-    exp_name: str = "exp_0000"
-    save_model_path: str = "rl_params"
-    track: bool = True
-
+    save_model: bool = True  # Whether to save the trained model.
+    save_model_interval: int = 1  # Interval for saving the trained model.
+    log_path: str = "rl_log"  # Path to the directory where training settings and trained models are saved.
+    exp_name: str = "exp_0000"  # Name of the experiment.
+    save_model_path: str = "rl_params"  # Path to the directory where the trained model is saved.
+    track: bool = True  # Whether to track training with wandb.
     # actor config
-    load_initial_model: bool = False
-    initial_model_path: str = None
-    actor_activation: str = "relu"
-    actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"
+    load_initial_model: bool = False  # Whether to load a pretrained model as the initial values for the neural network.
+    initial_model_path: str = None  # Path to the initial model for the neural network.
+    actor_activation: str = "relu"  # Activation function of the model being trained.
+    actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type being trained.
     # opposite config
-    game_mode: Literal["competitive", "free-run"] = "competitive"
-    self_play: bool = True
-    opp_activation: str = "relu"
-    opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"
-    opp_model_path: str = None
-    ratio_model_zoo: float = 0
-    num_model_zoo: int = 100_000
-    threshold_model_zoo: float = -24
-    prioritized_fictitious: bool = False
-    prior_t: float = 0.1
-    num_prioritized_envs: int = 100
-
+    game_mode: Literal["competitive", "free-run"] = "competitive"  # Game mode for bridge, "competitive" or "free-run".
+    self_play: bool = True  # Whether to engage in self-play.
+    opp_activation: str = "relu"  # Activation function of the opponent during training, same as actor_activation if self-play is used.
+    opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during training, same as actor_model_type if self-play is used.
+    opp_model_path: str = None  # Model path of the opponent during training, not needed if self-play is used.
+    ratio_model_zoo: float = 0  # Ratio from 0 to 1 for how often FSP is used in self-play.
+    num_model_zoo: int = 100_000  # Maximum number of past models used for FSP.
+    threshold_model_zoo: float = -24  # Threshold for using a trained model in FSP, set to -24 to use all trained models.
+    prioritized_fictitious: bool = False  # Whether to use the improved method PFSP.
+    prior_t: float = 0.1  # Softmax temperature parameter for sampling probability in PFSP.
+    num_prioritized_envs: int = 100  # Number of boards to play for calculating priority in PFSP.
     # GAE config
-    gamma: float = 1
-    gae_lambda: float = 0.95
+    gamma: float = 1  # Discount factor gamma.
+    gae_lambda: float = 0.95  # GAE lambda for advantage estimation.
     # loss config
-    clip_eps: float = 0.2
-    ent_coef: float = 0.001
-    vf_coef: float = 0.5
-    # PPO code optimaization
-    value_clipping: bool = True
-    global_gradient_clipping: bool = True
-    anneal_lr: bool = False
-    reward_scaling: bool = False
-    max_grad_norm: float = 0.5
-    reward_scale: float = 7600
-
+    clip_eps: float = 0.2  # Clipping epsilon for PPO.
+    ent_coef: float = 0.001  # Entropy coefficient for exploration.
+    vf_coef: float = 0.5  # Coefficient for value loss.
+    # PPO code optimization
+    value_clipping: bool = True  # Whether to apply value clipping.
+    global_gradient_clipping: bool = True  # Whether to apply global gradient clipping.
+    anneal_lr: bool = False  # Whether to anneal the learning rate.
+    reward_scaling: bool = False  # Whether to scale rewards.
+    max_grad_norm: float = 0.5  # Maximum norm for gradients.
+    reward_scale: float = 7600  # Hyperparameter for normalizing rewards.
     # illegal action config
-    actor_illegal_action_mask: bool = True
-    actor_illegal_action_penalty: bool = False
-    illegal_action_penalty: float = -1
-    illegal_action_l2norm_coef: float = 0
+    actor_illegal_action_mask: bool = True  # Whether to apply illegal action masking.
+    actor_illegal_action_penalty: bool = False  # Whether to apply a penalty for illegal actions.
+    illegal_action_penalty: float = -1  # Magnitude of penalty for illegal actions.
+    illegal_action_l2norm_coef: float = 0  # Coefficient for L2 norm to suppress output for illegal actions.
 
 
 args = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
