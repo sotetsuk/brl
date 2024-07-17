@@ -281,7 +281,6 @@ def train(config, rng, optimizer):
         wandb.log(log)
         if (runner_state[4] - board_count) // config.hash_size >= 1:
             hash_index += 1
-            print(f"hash is updated: {hash_index}")
             print(f"board count: {runner_state[4] - board_count}")
             board_count = runner_state[4]
             if hash_index == len(hash_index_list):
