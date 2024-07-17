@@ -57,8 +57,7 @@ class PPOConfig(BaseModel):
     exp_name: str = "exp_0000"  # Name of the experiment.
     save_model_path: str = "rl_params"  # Path to the directory where the trained model is saved.
     # actor config
-    load_initial_model: bool = True # Whether to load a pretrained model as the initial values for the neural network.
-    initial_model_path: str = "bridge_models/model-sl.pkl"  # Path to the initial model for the neural network.
+    initial_model_path: str | None = "bridge_models/model-sl.pkl"  # Path to the initial model for the neural network.
     actor_activation: str = "relu"  # Activation function of the model being trained.
     actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type being trained.
     # opposite config
@@ -114,8 +113,7 @@ def train(config, rng, optimizer):
     params = actor_forward_pass.init(_rng, init_x)  # params  # DONE
     opt_state = optimizer.init(params=params)  # DONE
 
-    # LOAD INITIAL MODEL
-    if config.load_initial_model:
+    if config.initial_model_path is not None:
         params = pickle.load(open(config.initial_model_path, "rb"))
         print(f"load initial params for actor: {config.initial_model_path}")
 
