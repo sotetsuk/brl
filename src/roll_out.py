@@ -3,10 +3,7 @@ import distrax
 from typing import NamedTuple, Any, Literal
 import jax.numpy as jnp
 import numpy as np
-from src.utils import (
-    single_play_step_two_policy_commpetitive,
-    single_play_step_free_run,
-)
+from src.utils import single_play_step_two_policy_commpetitive
 from pgx.experimental.wrappers import auto_reset
 
 
