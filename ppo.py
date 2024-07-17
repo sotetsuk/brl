@@ -64,7 +64,6 @@ class PPOConfig(BaseModel):
     actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type being trained.
     # opposite config
     game_mode: Literal["competitive", "free-run"] = "competitive"  # Game mode for bridge, "competitive" or "free-run".
-    self_play: bool = True  # Whether to engage in self-play.
     opp_activation: str = "relu"  # Activation function of the opponent during training, same as actor_activation if self-play is used.
     opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during training, same as actor_model_type if self-play is used.
     opp_model_path: str = None  # Model path of the opponent during training, not needed if self-play is used.
@@ -191,13 +190,11 @@ def train(config, rng, optimizer):
         _rng,
     )  # DONE
 
-    if not config.self_play:
-        opp_params = pickle.load(open(config.eval_opp_model_path, "rb"))
-    else:
-        opp_params = params
     if config.save_model:
         save_model_path = os.path.join(config.log_path, config.exp_name, config.save_model_path)
         os.makedirs(save_model_path, exist_ok=True)
+    with open(config.eval_opp_model_path, "rb") as f:
+        eval_opp_params = pickle.load(f)
     print("start training")
     for i in range(config.num_updates):
         print(f"--------------iteration {i}---------------")
@@ -210,23 +207,22 @@ def train(config, rng, optimizer):
         # eval
         if i % config.num_eval_step == 0:
             time_du_sta = time.time()
-            log_info, _, _ = jit_simple_duplicate_evaluate(runner_state[0], opp_params, eval_rng)
+            log_info, _, _ = jit_simple_duplicate_evaluate(runner_state[0], eval_opp_params, eval_rng)
             eval_log = {"eval/IMP_reward": log_info[0].item(), "eval/IMP_SE": log_info[1].item()}
             time_du_end = time.time()
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
-        if config.self_play:
-            params_list = sorted([path for path in os.listdir(save_model_path) if "params" in path])
-            if (len(params_list) != 0) and np.random.binomial(
-                size=1, n=1, p=config.ratio_model_zoo
-            ):
-                params_path = np.random.choice(params_list)
-                print(f"opposite params: {params_path}")
-                with open(os.path.join(save_model_path, params_path), "rb") as f:
-                    opp_params = pickle.load(f)
-            else:
-                print("opposite params: latest")
-                opp_params = runner_state[0]
+        params_list = sorted([path for path in os.listdir(save_model_path) if "params" in path])
+        if (len(params_list) != 0) and np.random.binomial(
+            size=1, n=1, p=config.ratio_model_zoo
+        ):
+            params_path = np.random.choice(params_list)
+            print(f"opposite params: {params_path}")
+            with open(os.path.join(save_model_path, params_path), "rb") as f:
+                opp_params = pickle.load(f)
+        else:
+            print("opposite params: latest")
+            opp_params = runner_state[0]
 
         time1 = time.time()
         runner_state, traj_batch = roll_out(
