@@ -251,11 +251,6 @@ def train(config, rng, optimizer):
             "train/policy_entropy": float(entropy[-1][-1]),
             "train/clipflacs": float(clipflacs[-1][-1]),
             "train/approx_kl": float(approx_kl[-1][-1]),
-            "train/lr": float(
-                linear_schedule(
-                    (i + 1) * config.update_epochs * config.num_minibatches
-                )
-            ),
             "train/ix0": jnp.sum(traj_batch.step_ix.flatten() % 4 == 0).sum().item(),
             "train/ix1": jnp.sum(traj_batch.step_ix.flatten() % 4 == 1).sum().item(),
             "train/ix2": jnp.sum(traj_batch.step_ix.flatten() % 4 == 2).sum().item(),
