@@ -77,7 +77,6 @@ class PPOConfig(BaseModel):
     ratio_model_zoo: float = 0  # Ratio from 0 to 1 for how often FSP is used in self-play.
     num_model_zoo: int = 100_000  # Maximum number of past models used for FSP.
     threshold_model_zoo: float = -24  # Threshold for using a trained model in FSP, set to -24 to use all trained models.
-    prioritized_fictitious: bool = False  # Whether to use the improved method PFSP.
     prior_t: float = 0.1  # Softmax temperature parameter for sampling probability in PFSP.
     num_prioritized_envs: int = 100  # Number of boards to play for calculating priority in PFSP.
     # GAE config
@@ -287,50 +286,7 @@ def train(config, rng, optimizer):
                 if (len(params_list) != 0) and np.random.binomial(
                     size=1, n=1, p=config.ratio_model_zoo
                 ):
-                    if config.prioritized_fictitious:
-                        league_sta = time.time()
-                        win_rate_list = np.zeros(len(params_list))
-                        imp_list = np.zeros(len(params_list))
-                        team1_params = runner_state[0]
-                        for i in range(len(params_list)):
-                            team2_params = pickle.load(
-                                open(
-                                    os.path.join(
-                                        config.log_path,
-                                        config.exp_name,
-                                        config.save_model_path,
-                                        params_list[i],
-                                    ),
-                                    "rb",
-                                )
-                            )
-                            log, _, _ = jit_simple_duplicate_evaluate(
-                                team1_params=team1_params,
-                                team2_params=team2_params,
-                                rng_key=eval_rng,
-                            )
-                            win_rate_list[i] = log[2]
-                            imp_list[i] = log[0]
-                        league_end = time.time()
-                        print(f"league time: {league_end - league_sta}")
-
-                        def softmax(x):
-                            exp_values = np.exp(
-                                (x - np.max(x, axis=-1, keepdims=True))
-                                / config.prior_t
-                            )
-                            probabilities = exp_values / np.sum(
-                                exp_values, axis=-1, keepdims=True
-                            )
-                            return probabilities
-
-                        probabilities = softmax(-imp_list)
-                        params_index = np.random.choice(
-                            len(probabilities), p=probabilities
-                        )
-                        params_path = params_list[params_index]
-                    else:
-                        params_path = np.random.choice(params_list)
+                    params_path = np.random.choice(params_list)
                     print(f"opposite params: {params_path}")
                     opp_params = pickle.load(
                         open(
