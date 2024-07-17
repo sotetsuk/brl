@@ -22,12 +22,7 @@ from pydantic import BaseModel
 import wandb
 
 from src.models import make_forward_pass
-from src.evaluation import (
-    make_evaluate,
-    make_evaluate_log,
-    make_simple_evaluate,
-    make_simple_duplicate_evaluate,
-)
+from src.evaluation import make_simple_duplicate_evaluate,
 from src.roll_out import make_roll_out
 from src.gae import make_calc_gae
 from src.update import make_update_step
@@ -146,20 +141,7 @@ def train(config, rng, optimizer):
         team2_model_type=config.actor_model_type,
         num_eval_envs=config.num_prioritized_envs,
     )
-    duplicate_evaluate = make_evaluate(
-        eval_env=eval_env,
-        team1_activation=config.actor_activation,
-        team1_model_type=config.actor_model_type,
-        team2_activation=config.eval_opp_activation,
-        team2_model_type=config.eval_opp_model_type,
-        team2_model_path=config.eval_opp_model_path,
-        num_eval_envs=config.num_eval_envs,
-        game_mode=config.game_mode,
-        duplicate=True,
-    )
     jit_simple_duplicate_evaluate = jax.jit(simple_duplicate_evaluate)
-    jit_diplicate_evaluate = jax.jit(duplicate_evaluate)
-    jit_make_evaluate_log = jax.jit(make_evaluate_log)
 
     # INIT UPDATE FUNCTION
 
@@ -242,8 +224,8 @@ def train(config, rng, optimizer):
         # eval
         if i % config.num_eval_step == 0:
             time_du_sta = time.time()
-            log_info, _, _ = jit_diplicate_evaluate(runner_state[0], eval_rng)
-            eval_log = jit_make_evaluate_log(log_info)
+            log_info, _, _ = jit_simple_duplicate_evaluate(runner_state[0], eval_rng)
+            eval_log = {"eval/IMP_reward": log_info[0].item(), "eval/IMP_SE": log_info[1].item()}
             time_du_end = time.time()
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
