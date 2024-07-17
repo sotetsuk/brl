@@ -71,7 +71,6 @@ class PPOConfig(BaseModel):
     ratio_model_zoo: float = 0  # Ratio from 0 to 1 for how often FSP is used in self-play.
     num_model_zoo: int = 100_000  # Maximum number of past models used for FSP.
     prior_t: float = 0.1  # Softmax temperature parameter for sampling probability in PFSP.
-    num_prioritized_envs: int = 100  # Number of boards to play for calculating priority in PFSP.
     # GAE config
     gamma: float = 1  # Discount factor gamma.
     gae_lambda: float = 0.95  # GAE lambda for advantage estimation.
@@ -139,7 +138,7 @@ def train(config, rng, optimizer):
         team1_model_type=config.actor_model_type,
         team2_activation=config.actor_activation,
         team2_model_type=config.actor_model_type,
-        num_eval_envs=config.num_prioritized_envs,
+        num_eval_envs=config.num_eval_envs,
     )
     jit_simple_duplicate_evaluate = jax.jit(simple_duplicate_evaluate)
 
