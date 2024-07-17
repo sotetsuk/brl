@@ -46,20 +46,20 @@ class PPOConfig(BaseModel):
     dds_results_dir: str = "dds_results"  # Path to the directory where dds_results are located.
     hash_size: int = 100_000  # Hash size for dds_results.
     # eval config
-    num_eval_envs: int = 10000  # Number of parallel environments for evaluation.
+    num_eval_envs: int = 100_000  # Number of parallel environments for evaluation.
     eval_opp_activation: str = "relu"  # Activation function of the opponent during evaluation.
     eval_opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during evaluation.
-    eval_opp_model_path: str = None  # Path to the baseline model prepared for evaluation.
-    num_eval_step: int = 10  # Interval for evaluation.
+    eval_opp_model_path: str = "bridge_models/model-sl.pkl"  # Path to the baseline model prepared for evaluation.
+    num_eval_step: int = 100  # Interval for evaluation.
     # log config
     save_model: bool = True  # Whether to save the trained model.
-    save_model_interval: int = 1  # Interval for saving the trained model.
+    save_model_interval: int = 100  # Interval for saving the trained model.
     log_path: str = "rl_log"  # Path to the directory where training settings and trained models are saved.
     exp_name: str = "exp_0000"  # Name of the experiment.
     save_model_path: str = "rl_params"  # Path to the directory where the trained model is saved.
     # actor config
-    load_initial_model: bool = False  # Whether to load a pretrained model as the initial values for the neural network.
-    initial_model_path: str = None  # Path to the initial model for the neural network.
+    load_initial_model: bool = True # Whether to load a pretrained model as the initial values for the neural network.
+    initial_model_path: str = "bridge_models/model-sl.pkl"  # Path to the initial model for the neural network.
     actor_activation: str = "relu"  # Activation function of the model being trained.
     actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type being trained.
     # opposite config
@@ -68,7 +68,7 @@ class PPOConfig(BaseModel):
     opp_activation: str = "relu"  # Activation function of the opponent during training, same as actor_activation if self-play is used.
     opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during training, same as actor_model_type if self-play is used.
     opp_model_path: str = None  # Model path of the opponent during training, not needed if self-play is used.
-    ratio_model_zoo: float = 0  # Ratio from 0 to 1 for how often FSP is used in self-play.
+    ratio_model_zoo: float = 1  # Ratio from 0 to 1 for how often FSP is used in self-play.
     num_model_zoo: int = 100_000  # Maximum number of past models used for FSP.
     prior_t: float = 0.1  # Softmax temperature parameter for sampling probability in PFSP.
     # GAE config
