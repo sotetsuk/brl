@@ -197,22 +197,15 @@ def train(config, rng, optimizer):
     else:
         opp_params = params
     if config.save_model:
-        os.mkdirs(os.path.join(config.log_path, config.exp_name, config.save_model_path), exist_ok=True)
+        save_model_path = os.path.join(config.log_path, config.exp_name, config.save_model_path)
+        os.mkdirs(save_model_path, exist_ok=True)
     print("start training")
     for i in range(config.num_updates):
         print(f"--------------iteration {i}---------------")
         # save model
         if (i != 0) and (i % config.save_model_interval == 0):
             if config.save_model:
-                with open(
-                    os.path.join(
-                        config.log_path,
-                        config.exp_name,
-                        config.save_model_path,
-                        f"params-{i:08}.pkl",
-                    ),
-                    "wb",
-                ) as writer:
+                with open(os.path.join(save_model_path, f"params-{i:08}.pkl"), "wb") as writer:
                     pickle.dump(runner_state[0], writer)
 
         # eval
@@ -224,35 +217,14 @@ def train(config, rng, optimizer):
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
         if config.self_play:
-            params_list = sorted(
-                [
-                    path
-                    for path in os.listdir(
-                        os.path.join(
-                            config.log_path,
-                            config.exp_name,
-                            config.save_model_path,
-                        )
-                    )
-                    if "params" in path
-                ]
-            )
+            params_list = sorted([path for path in os.listdir(save_model_path) if "params" in path])
             if (len(params_list) != 0) and np.random.binomial(
                 size=1, n=1, p=config.ratio_model_zoo
             ):
                 params_path = np.random.choice(params_list)
                 print(f"opposite params: {params_path}")
-                opp_params = pickle.load(
-                    open(
-                        os.path.join(
-                            config.log_path,
-                            config.exp_name,
-                            config.save_model_path,
-                            params_path,
-                        ),
-                        "rb",
-                    )
-                )
+                with open(os.path.join(save_model_path, params_path), "rb") as f:
+                    opp_params = pickle.load(f)
             else:
                 print("opposite params: latest")
                 opp_params = runner_state[0]
@@ -333,26 +305,8 @@ def train(config, rng, optimizer):
                 _rng,
             )
     if config.save_model:
-        with open(
-            os.path.join(
-                config.log_path,
-                config.exp_name,
-                config.save_model_path,
-                f"params-{i + 1:08}.pkl",
-            ),
-            "wb",
-        ) as writer:
+        with open(os.path.join(save_model_path, f"params-{i + 1:08}.pkl"), "wb") as writer:
             pickle.dump(runner_state[0], writer)
-        with open(
-            os.path.join(
-                config.log_path,
-                config.exp_name,
-                config.save_model_path,
-                f"opt_state-{i + 1:08}.pkl",
-            ),
-            "wb",
-        ) as writer:
-            pickle.dump(runner_state[1], writer)
 
     return runner_state
 
