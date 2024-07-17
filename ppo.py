@@ -122,7 +122,7 @@ def train(config, rng, optimizer):
 
     # MAKE EVAL
     rng, eval_rng = jax.random.split(rng)
-    eval_env = BridgeBidding("dds_results/test_000.npy")
+    eval_env = BridgeBidding("dds_results/dds_results_500K.npy")
     simple_duplicate_evaluate = make_simple_duplicate_evaluate(
         eval_env=eval_env,
         team1_activation=config.actor_activation,
