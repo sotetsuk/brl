@@ -63,7 +63,6 @@ class PPOConfig(BaseModel):
     actor_activation: str = "relu"  # Activation function of the model being trained.
     actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type being trained.
     # opposite config
-    game_mode: Literal["competitive", "free-run"] = "competitive"  # Game mode for bridge, "competitive" or "free-run".
     use_fsp: bool = False  # Whether to use fictitious self-play.
     # GAE config
     gamma: float = 1  # Discount factor gamma.

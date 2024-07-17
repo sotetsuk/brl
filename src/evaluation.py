@@ -212,7 +212,6 @@ def make_evaluate(
     team2_model_type,
     team2_model_path,
     num_eval_envs,
-    game_mode,
     duplicate=False,
 ):
 
@@ -226,29 +225,22 @@ def make_evaluate(
     )
     opp_params = pickle.load(open(team2_model_path, "rb"))
 
-    if game_mode == "competitive":
-        opp_forward_pass = make_forward_pass(
-            activation=team2_activation,
-            model_type=team2_model_type,
+    opp_forward_pass = make_forward_pass(
+        activation=team2_activation,
+        model_type=team2_model_type,
+    )
+    opp_params = pickle.load(open(team2_model_path, "rb"))
+
+    def opp_make_action(state):
+        logits, value = opp_forward_pass.apply(
+            opp_params, state.observation
+        )  # DONE
+        masked_logits = logits + jnp.finfo(np.float64).min * (
+            ~state.legal_action_mask
         )
-        opp_params = pickle.load(open(team2_model_path, "rb"))
-
-        def opp_make_action(state):
-            logits, value = opp_forward_pass.apply(
-                opp_params, state.observation
-            )  # DONE
-            masked_logits = logits + jnp.finfo(np.float64).min * (
-                ~state.legal_action_mask
-            )
-            masked_pi = distrax.Categorical(logits=masked_logits)
-            pi = distrax.Categorical(logits=logits)
-            return (masked_pi.mode(), pi.probs)
-
-    elif game_mode == "free-run":
-
-        def opp_make_action(state):
-            pi_probs = jnp.zeros(38).at[0].set(True)
-            return (jnp.int32(0), pi_probs)
+        masked_pi = distrax.Categorical(logits=masked_logits)
+        pi = distrax.Categorical(logits=logits)
+        return (masked_pi.mode(), pi.probs)
 
     def get_fn(x, i):
         return x[i]
