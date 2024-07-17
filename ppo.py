@@ -44,7 +44,6 @@ class PPOConfig(BaseModel):
     num_updates: int = 10000  # Number of parameter updates until training concludes.
     # dataset config
     dds_results_dir: str = "dds_results"  # Path to the directory where dds_results are located.
-    hash_size: int = 100_000  # Hash size for dds_results.
     # eval config
     num_eval_envs: int = 100_000  # Number of parallel environments for evaluation.
     eval_opp_activation: str = "relu"  # Activation function of the opponent during evaluation.
@@ -141,21 +140,14 @@ def train(config, rng, optimizer):
     )
 
     # INIT ENV
-    env_list = []
-    init_list = []
-    roll_out_list = []
     train_dds_results_list = sorted(
         [path for path in os.listdir(config.dds_results_dir) if "train" in path]
     )
 
     # dds_resultsの異なるhash tableをloadしたenvを用意
-    for file in train_dds_results_list:
-        env = BridgeBidding(os.path.join(config.dds_results_dir, file))
-        env_list.append(env)
-        init_list.append(jax.jit(jax.vmap(env.init)))
-        roll_out_list.append(
-            jax.jit(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
-        )
+    env = BridgeBidding(os.path.join(config.dds_results_dir, file))
+    init = jax.jit(jax.vmap(env.init))
+    roll_out = jax.jit(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
     calc_gae = jax.jit(make_calc_gae(config, actor_forward_pass))
     update_step = jax.jit(
         make_update_step(config, actor_forward_pass, optimizer=optimizer)
@@ -163,8 +155,6 @@ def train(config, rng, optimizer):
 
     rng, _rng = jax.random.split(rng)
     reset_rng = jax.random.split(_rng, config.num_envs)
-    init = init_list[0]
-    roll_out = roll_out_list[0]
     env_state = init(reset_rng)
 
     hash_index_list = np.arange(len(train_dds_results_list))
@@ -262,31 +252,7 @@ def train(config, rng, optimizer):
         if i % config.num_eval_step == 0:
             log = {**log, **eval_log}
         wandb.log(log)
-        if (runner_state[4] - board_count) // config.hash_size >= 1:
-            hash_index += 1
-            print(f"board count: {runner_state[4] - board_count}")
-            board_count = runner_state[4]
-            if hash_index == len(hash_index_list):
-                hash_index = 0
-                print("use all hash, shuffle")
-                np.random.shuffle(hash_index_list)
-            print(
-                f"use hash table: {train_dds_results_list[hash_index_list[hash_index]]}"
-            )
-            init = init_list[hash_index_list[hash_index]]
-            roll_out = roll_out_list[hash_index_list[hash_index]]
-            rng, _rng = jax.random.split(rng)
-            reset_rng = jax.random.split(_rng, config.num_envs)
-
-            env_state = init(reset_rng)
-            runner_state = (
-                runner_state[0],
-                runner_state[1],
-                env_state,
-                env_state.observation,
-                runner_state[4],
-                _rng,
-            )
+    
     if config.save_model:
         with open(os.path.join(save_model_path, f"params-{i + 1:08}.pkl"), "wb") as writer:
             pickle.dump(runner_state[0], writer)
