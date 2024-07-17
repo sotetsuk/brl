@@ -238,7 +238,7 @@ def train(config, rng, optimizer):
             "board_num": int(runner_state[4]),
             "steps": steps,
         }
-        pprint(log)
+        print(log)
         if i % config.num_eval_step == 0:
             log = {**log, **eval_log}
         wandb.log(log)
@@ -252,7 +252,7 @@ def train(config, rng, optimizer):
 
 if __name__ == "__main__":
     config = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
-    pprint(config)
+    print(config)
     wandb.init(
         project="ppo-bridge",
         name=config.exp_name,
