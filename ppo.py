@@ -62,7 +62,6 @@ class PPOConfig(BaseModel):
     log_path: str = "rl_log"  # Path to the directory where training settings and trained models are saved.
     exp_name: str = "exp_0000"  # Name of the experiment.
     save_model_path: str = "rl_params"  # Path to the directory where the trained model is saved.
-    track: bool = True  # Whether to track training with wandb.
     # actor config
     load_initial_model: bool = False  # Whether to load a pretrained model as the initial values for the neural network.
     initial_model_path: str = None  # Path to the initial model for the neural network.
@@ -331,8 +330,7 @@ def train(config, rng, optimizer):
         pprint(log)
         if i % config.num_eval_step == 0:
             log = {**log, **eval_log}
-        if config.track:
-            wandb.log(log)
+        wandb.log(log)
         if (runner_state[4] - board_count) // config.hash_size >= 1:
             hash_index += 1
             print(f"board count: {runner_state[4] - board_count}")
@@ -385,6 +383,13 @@ def train(config, rng, optimizer):
 
 if __name__ == "__main__":
     config = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
+    pprint(config)
+    wandb.init(
+        project="ppo-bridge",
+        name=config.exp_name,
+        config=config.model_dump(),
+        save_code=True,
+    )
 
     def linear_schedule(count):
         frac = (
@@ -393,7 +398,6 @@ if __name__ == "__main__":
             / config.num_updates
         )
         return config.lr * frac
-
 
     if config.anneal_lr:
         if config.global_gradient_clipping:
@@ -413,26 +417,6 @@ if __name__ == "__main__":
         else:
             optimizer = optax.adam(config.lr, eps=1e-5)
 
-    if config.track:
-        wandb.init(
-            project="ppo-bridge",
-            name=config.exp_name,
-            config=config.model_dump(),
-            save_code=True,
-        )
-        os.mkdir(os.path.join(config.log_path, config.exp_name))
-        config_file = open(
-            os.path.join(config.log_path, config.exp_name, "config.json"),
-            mode="w",
-        )
-        json.dump(
-            config.dict(),
-            config_file,
-            indent=2,
-            ensure_ascii=False,
-        )
-        config_file.close()
-    pprint(config)
     rng = jax.random.PRNGKey(config.seed)
     sta = time.time()
     out = train(config, rng, optimizer)
