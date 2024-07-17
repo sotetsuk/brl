@@ -102,34 +102,6 @@ class PPOConfig(BaseModel):
 
 
 
-def linear_schedule(count):
-    frac = (
-        1.0
-        - (count // (config.num_minibatches * config.update_epochs))
-        / config.num_updates
-    )
-    return config.lr * frac
-
-
-if args.anneal_lr:
-    if args.global_gradient_clipping:
-        optimizer = optax.chain(
-            optax.clip_by_global_norm(args.max_grad_norm),
-            optax.adam(learning_rate=linear_schedule, eps=1e-5),
-        )
-    else:
-        optimizer = optax.adam(learning_rate=linear_schedule, eps=1e-5)
-
-else:
-    if args.global_gradient_clipping:
-        optimizer = optax.chain(
-            optax.clip_by_global_norm(args.max_grad_norm),
-            optax.adam(args.lr, eps=1e-5),
-        )
-    else:
-        optimizer = optax.adam(args.lr, eps=1e-5)
-
-
 class Transition(NamedTuple):
     done: jnp.ndarray
     action: jnp.ndarray
@@ -140,7 +112,7 @@ class Transition(NamedTuple):
     legal_action_mask: jnp.ndarray
 
 
-def train(config, rng):
+def train(config, rng, optimizer):
     config.num_updates = (
         config.total_timesteps // config.num_steps // config.num_envs
     )
@@ -493,6 +465,34 @@ def train(config, rng):
 
 if __name__ == "__main__":
     config = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
+
+    def linear_schedule(count):
+        frac = (
+            1.0
+            - (count // (config.num_minibatches * config.update_epochs))
+            / config.num_updates
+        )
+        return config.lr * frac
+
+
+    if config.anneal_lr:
+        if config.global_gradient_clipping:
+            optimizer = optax.chain(
+                optax.clip_by_global_norm(config.max_grad_norm),
+                optax.adam(learning_rate=linear_schedule, eps=1e-5),
+            )
+        else:
+            optimizer = optax.adam(learning_rate=linear_schedule, eps=1e-5)
+
+    else:
+        if config.global_gradient_clipping:
+            optimizer = optax.chain(
+                optax.clip_by_global_norm(config.max_grad_norm),
+                optax.adam(config.lr, eps=1e-5),
+            )
+        else:
+            optimizer = optax.adam(config.lr, eps=1e-5)
+
     if config.track:
         wandb.init(
             project="ppo-bridge",
@@ -515,6 +515,6 @@ if __name__ == "__main__":
     pprint(config)
     rng = jax.random.PRNGKey(config.seed)
     sta = time.time()
-    out = train(config, rng)
+    out = train(config, rng, optimizer)
     end = time.time()
     print("training: time", end - sta)
