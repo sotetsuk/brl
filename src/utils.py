@@ -15,7 +15,8 @@ def single_play_step_two_policy_commpetitive(
     # teamB_model_params = teamB_param
 
     def wrapped_step_fn(state, action, rng):
-        state = jax.vmap(step_fn)(state, action)
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)
         rewards1 = state.rewards
         terminated1 = state.terminated
         # print(f"rewards: {state.rewards}")
@@ -31,7 +32,8 @@ def single_play_step_two_policy_commpetitive(
         logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
-        state = jax.vmap(step_fn)(state, action)  # step by left
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
         rewards2 = state.rewards
         terminated2 = state.terminated
         # print(f"sl model, action: {action}")
@@ -48,7 +50,8 @@ def single_play_step_two_policy_commpetitive(
         logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
-        state = jax.vmap(step_fn)(state, action)  # step by pd
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by pd
         rewards3 = state.rewards
         terminated3 = state.terminated
         # print(f"actor team, action: {action}")
@@ -65,7 +68,8 @@ def single_play_step_two_policy_commpetitive(
         logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
-        state = jax.vmap(step_fn)(state, action)  # step by left
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
         rewards4 = state.rewards
         terminated4 = state.terminated
         # print(f"sl model, action: {action}")
@@ -87,7 +91,8 @@ def single_play_step_two_policy_commpetitive_deterministic(
     # teamB_model_params = teamB_param
 
     def wrapped_step_fn(state, action, rng):
-        state = jax.vmap(step_fn)(state, action)
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)
         rewards1 = state.rewards
         terminated1 = state.terminated
         # print(f"rewards: {state.rewards}")
@@ -103,7 +108,8 @@ def single_play_step_two_policy_commpetitive_deterministic(
         logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.mode()
-        state = jax.vmap(step_fn)(state, action)  # step by left
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
         rewards2 = state.rewards
         terminated2 = state.terminated
         # print(f"sl model, action: {action}")
@@ -120,7 +126,8 @@ def single_play_step_two_policy_commpetitive_deterministic(
         logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.mode()
-        state = jax.vmap(step_fn)(state, action)  # step by pd
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by pd
         rewards3 = state.rewards
         terminated3 = state.terminated
         # print(f"actor team, action: {action}")
@@ -137,7 +144,8 @@ def single_play_step_two_policy_commpetitive_deterministic(
         logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.mode()
-        state = jax.vmap(step_fn)(state, action)  # step by left
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
         rewards4 = state.rewards
         terminated4 = state.terminated
         # print(f"sl model, action: {action}")
@@ -158,13 +166,15 @@ def single_play_step_free_run(
     """
 
     def wrapped_step_fn(state, action, rng):
-        state = jax.vmap(step_fn)(state, action)
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)
         rewards1 = state.rewards
         terminated1 = state.terminated
 
         # opposite turn
         action = jnp.zeros_like(action)
-        state = jax.vmap(step_fn)(state, action)  # step by left
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
         rewards2 = state.rewards
         terminated2 = state.terminated
 
@@ -177,13 +187,15 @@ def single_play_step_free_run(
         logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.mode()
-        state = jax.vmap(step_fn)(state, action)  # step by pd
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by pd
         rewards3 = state.rewards
         terminated3 = state.terminated
 
         # opposite turn
         action = jnp.zeros_like(action)
-        state = jax.vmap(step_fn)(state, action)  # step by left
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
         rewards4 = state.rewards
         terminated4 = state.terminated
 
@@ -196,7 +208,8 @@ def single_play_step_free_run(
 
 def normal_step(step_fn):
     def wrapped_step_fn(state, action, rng):
-        state = jax.vmap(step_fn)(state, action)
+        rng, _rng = jax.random.split(rng)
+        state = jax.vmap(step_fn)(state, action, _rng)
         return state
 
     return wrapped_step_fn
