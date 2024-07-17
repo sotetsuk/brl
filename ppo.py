@@ -65,11 +65,7 @@ class PPOConfig(BaseModel):
     # opposite config
     game_mode: Literal["competitive", "free-run"] = "competitive"  # Game mode for bridge, "competitive" or "free-run".
     opp_activation: str = "relu"  # Activation function of the opponent during training, same as actor_activation if self-play is used.
-    opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during training, same as actor_model_type if self-play is used.
-    opp_model_path: str = None  # Model path of the opponent during training, not needed if self-play is used.
-    ratio_model_zoo: float = 1  # Ratio from 0 to 1 for how often FSP is used in self-play.
-    num_model_zoo: int = 100_000  # Maximum number of past models used for FSP.
-    prior_t: float = 0.1  # Softmax temperature parameter for sampling probability in PFSP.
+    use_fsp: bool = False  # Whether to use fictitious self-play.
     # GAE config
     gamma: float = 1  # Discount factor gamma.
     gae_lambda: float = 0.95  # GAE lambda for advantage estimation.
@@ -190,16 +186,15 @@ def train(config, rng, optimizer):
         _rng,
     )  # DONE
 
-    if config.save_model:
-        save_model_path = os.path.join(config.log_path, config.exp_name, config.save_model_path)
-        os.makedirs(save_model_path, exist_ok=True)
+    save_model_path = os.path.join(config.log_path, config.exp_name, config.save_model_path)
+    os.makedirs(save_model_path, exist_ok=True)
     with open(config.eval_opp_model_path, "rb") as f:
         eval_opp_params = pickle.load(f)
     print("start training")
     for i in range(config.num_updates):
         print(f"--------------iteration {i}---------------")
         # save model
-        if (i != 0) and (i % config.save_model_interval == 0):
+        if i % config.save_model_interval == 0:
             if config.save_model:
                 with open(os.path.join(save_model_path, f"params-{i:08}.pkl"), "wb") as writer:
                     pickle.dump(runner_state[0], writer)
@@ -212,10 +207,8 @@ def train(config, rng, optimizer):
             time_du_end = time.time()
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
-        params_list = sorted([path for path in os.listdir(save_model_path) if "params" in path])
-        if (len(params_list) != 0) and np.random.binomial(
-            size=1, n=1, p=config.ratio_model_zoo
-        ):
+        if config.use_fsp:
+            params_list = sorted([path for path in os.listdir(save_model_path) if "params" in path])
             params_path = np.random.choice(params_list)
             print(f"opposite params: {params_path}")
             with open(os.path.join(save_model_path, params_path), "rb") as f:
