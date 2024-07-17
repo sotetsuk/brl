@@ -57,7 +57,7 @@ class PPOConfig(BaseModel):
     exp_name: str = "exp_0000"  # Name of the experiment.
     save_model_path: str = "rl_params"  # Path to the directory where the trained model is saved.
     # actor config
-    initial_model_path: str | None = "bridge_models/model-sl.pkl"  # Path to the initial model for the neural network.
+    initial_model_path: str = "bridge_models/model-sl.pkl"  # Path to the initial model for the neural network.
     actor_activation: str = "relu"  # Activation function of the model being trained.
     actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type being trained.
     # opposite config
