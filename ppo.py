@@ -50,7 +50,7 @@ class PPOConfig(BaseModel):
     eval_opp_activation: str = "relu"  # Activation function of the opponent during evaluation.
     eval_opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during evaluation.
     eval_opp_model_path: str = "bridge_models/model-sl.pkl"  # Path to the baseline model prepared for evaluation.
-    num_eval_step: int = 100  # Interval for evaluation.
+    num_eval_step: int = 10  # Interval for evaluation.
     # log config
     save_model: bool = True  # Whether to save the trained model.
     save_model_interval: int = 100  # Interval for saving the trained model.
