@@ -145,7 +145,6 @@ def train(config, rng, optimizer):
     )
 
     # dds_resultsの異なるhash tableをloadしたenvを用意
-    env = BridgeBidding(os.path.join(config.dds_results_dir, file))
     init = jax.jit(jax.vmap(env.init))
     roll_out = jax.jit(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
     calc_gae = jax.jit(make_calc_gae(config, actor_forward_pass))
