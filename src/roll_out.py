@@ -18,6 +18,7 @@ class Transition(NamedTuple):
     log_prob: jnp.ndarray
     obs: jnp.ndarray
     legal_action_mask: jnp.ndarray
+    step_ix: jnp.ndarray
 
 
 def make_roll_out(config, env, actor_forward_pass, opp_forward_pass):
@@ -91,6 +92,7 @@ def make_roll_out(config, env, actor_forward_pass, opp_forward_pass):
                 log_prob,
                 last_obs,
                 mask,
+                env_state._step_count % 4,
             )
             runner_state = (
                 params,

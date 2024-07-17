@@ -259,6 +259,10 @@ def train(config, rng, optimizer):
                     (i + 1) * config.update_epochs * config.num_minibatches
                 )
             ),
+            "train/ix0": jnp.sum(traj_batch.step_ix.flatten() % 4 == 0).sum().item(),
+            "train/ix1": jnp.sum(traj_batch.step_ix.flatten() % 4 == 1).sum().item(),
+            "train/ix2": jnp.sum(traj_batch.step_ix.flatten() % 4 == 2).sum().item(),
+            "train/ix3": jnp.sum(traj_batch.step_ix.flatten() % 4 == 3).sum().item(),
             "board_num": int(runner_state[4]),
             "steps": steps,
         }
