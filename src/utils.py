@@ -15,8 +15,11 @@ def single_play_step_two_policy_commpetitive(
     # teamB_model_params = teamB_param
 
     def wrapped_step_fn(state, action, rng):
+        batch_size = action.shape[0]
+
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)
         rewards1 = state.rewards
         terminated1 = state.terminated
         # print(f"rewards: {state.rewards}")
@@ -33,7 +36,8 @@ def single_play_step_two_policy_commpetitive(
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by left
         rewards2 = state.rewards
         terminated2 = state.terminated
         # print(f"sl model, action: {action}")
@@ -51,7 +55,8 @@ def single_play_step_two_policy_commpetitive(
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by pd
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by pd
         rewards3 = state.rewards
         terminated3 = state.terminated
         # print(f"actor team, action: {action}")
@@ -69,7 +74,8 @@ def single_play_step_two_policy_commpetitive(
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by left
         rewards4 = state.rewards
         terminated4 = state.terminated
         # print(f"sl model, action: {action}")
@@ -91,8 +97,11 @@ def single_play_step_two_policy_commpetitive_deterministic(
     # teamB_model_params = teamB_param
 
     def wrapped_step_fn(state, action, rng):
+        batch_size = action.shape[0]
+    
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)
         rewards1 = state.rewards
         terminated1 = state.terminated
         # print(f"rewards: {state.rewards}")
@@ -109,7 +118,8 @@ def single_play_step_two_policy_commpetitive_deterministic(
         pi = distrax.Categorical(logits=logits)
         action = pi.mode()
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by left
         rewards2 = state.rewards
         terminated2 = state.terminated
         # print(f"sl model, action: {action}")
@@ -127,7 +137,8 @@ def single_play_step_two_policy_commpetitive_deterministic(
         pi = distrax.Categorical(logits=logits)
         action = pi.mode()
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by pd
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by pd
         rewards3 = state.rewards
         terminated3 = state.terminated
         # print(f"actor team, action: {action}")
@@ -145,7 +156,8 @@ def single_play_step_two_policy_commpetitive_deterministic(
         pi = distrax.Categorical(logits=logits)
         action = pi.mode()
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by left
         rewards4 = state.rewards
         terminated4 = state.terminated
         # print(f"sl model, action: {action}")
@@ -166,15 +178,19 @@ def single_play_step_free_run(
     """
 
     def wrapped_step_fn(state, action, rng):
+        batch_size = action.shape[0]
+
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)
         rewards1 = state.rewards
         terminated1 = state.terminated
 
         # opposite turn
         action = jnp.zeros_like(action)
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by left
         rewards2 = state.rewards
         terminated2 = state.terminated
 
@@ -188,14 +204,16 @@ def single_play_step_free_run(
         pi = distrax.Categorical(logits=logits)
         action = pi.mode()
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by pd
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by pd
         rewards3 = state.rewards
         terminated3 = state.terminated
 
         # opposite turn
         action = jnp.zeros_like(action)
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)  # step by left
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)  # step by left
         rewards4 = state.rewards
         terminated4 = state.terminated
 
@@ -208,8 +226,10 @@ def single_play_step_free_run(
 
 def normal_step(step_fn):
     def wrapped_step_fn(state, action, rng):
+        batch_size = action.shape[0]
         rng, _rng = jax.random.split(rng)
-        state = jax.vmap(step_fn)(state, action, _rng)
+        rngs = jax.random.split(_rng, batch_size)
+        state = jax.vmap(step_fn)(state, action, rngs)
         return state
 
     return wrapped_step_fn
