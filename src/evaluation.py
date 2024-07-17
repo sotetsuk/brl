@@ -5,65 +5,6 @@ import distrax
 import pickle
 from src.duplicate import duplicate_step, Table_info
 from src.models import make_forward_pass
-from src.utils import single_play_step_two_policy_commpetitive_deterministic
-
-
-def make_simple_evaluate(
-    eval_env,
-    team1_activation,
-    team1_model_type,
-    team2_activation,
-    team2_model_type,
-    team2_model_path,
-    num_eval_envs,
-):
-
-    actor_forward_pass = make_forward_pass(
-        activation=team1_activation,
-        model_type=team1_model_type,
-    )
-    opp_forward_pass = make_forward_pass(
-        activation=team2_activation,
-        model_type=team2_model_type,
-    )
-    opp_params = pickle.load(open(team2_model_path, "rb"))
-
-    def get_fn(x, i):
-        return x[i]
-
-    def simple_evaluate(actor_params, rng):
-        step_fn = single_play_step_two_policy_commpetitive_deterministic(
-            step_fn=eval_env.step,
-            actor_params=actor_params,
-            actor_forward_pass=actor_forward_pass,
-            opp_params=opp_params,
-            opp_forward_pass=opp_forward_pass,
-        )
-        rng_key, sub_key = jax.random.split(rng)
-        subkeys = jax.random.split(sub_key, num_eval_envs)
-        state = jax.vmap(eval_env.init)(subkeys)
-        R = jnp.zeros(num_eval_envs)
-
-        def cond_fn(tup):
-            state, _, _ = tup
-            return ~state.terminated.all()
-
-        def loop_fn(tup):
-            state, R, rng_key = tup
-            actor = state.current_player
-            logits, value = actor_forward_pass.apply(actor_params, state.observation)
-            logits = logits + jnp.finfo(np.float64).min * (~state.legal_action_mask)
-            pi = distrax.Categorical(logits=logits)
-            action = pi.mode()
-            rng_key, _rng = jax.random.split(rng_key)
-            state = step_fn(state, action, _rng)
-            R = R + jax.vmap(get_fn)(state.rewards, actor)
-            return state, R, rng_key
-
-        state, R, _ = jax.lax.while_loop(cond_fn, loop_fn, (state, R, rng_key))
-        return R.mean()
-
-    return simple_evaluate
 
 
 def make_simple_duplicate_evaluate(
