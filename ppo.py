@@ -113,7 +113,7 @@ def train(config, rng, optimizer):
     params = actor_forward_pass.init(_rng, init_x)  # params  # DONE
     opt_state = optimizer.init(params=params)  # DONE
 
-    if config.initial_model_path is not None:
+    if config.initial_model_path:
         params = pickle.load(open(config.initial_model_path, "rb"))
         print(f"load initial params for actor: {config.initial_model_path}")
 
