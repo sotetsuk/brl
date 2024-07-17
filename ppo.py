@@ -63,8 +63,6 @@ class PPOConfig(BaseModel):
     actor_activation: str = "relu"  # Activation function of the model being trained.
     actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type being trained.
     # opposite config
-    game_mode: Literal["competitive", "free-run"] = "competitive"  # Game mode for bridge, "competitive" or "free-run".
-    opp_activation: str = "relu"  # Activation function of the opponent during training, same as actor_activation if self-play is used.
     use_fsp: bool = False  # Whether to use fictitious self-play.
     # GAE config
     gamma: float = 1  # Discount factor gamma.
@@ -140,8 +138,8 @@ def train(config, rng, optimizer):
     # INIT UPDATE FUNCTION
 
     opp_forward_pass = make_forward_pass(
-        activation=config.opp_activation,
-        model_type=config.opp_model_type,
+        activation=config.actor_activation,
+        model_type=config.actor_model_type,
     )
 
     # INIT ENV
