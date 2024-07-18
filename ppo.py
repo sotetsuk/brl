@@ -26,7 +26,6 @@ from src.evaluation import make_simple_duplicate_evaluate
 from src.roll_out import make_roll_out
 from src.gae import make_calc_gae
 from src.update import make_update_step
-from src.utils import make_skip_fn
 
 
 print(jax.default_backend())
@@ -112,7 +111,6 @@ def train(config, rng, optimizer):
     rng, _rng = jax.random.split(rng)
     init_x = jnp.zeros((1,) + env.observation_shape)
     params = actor_forward_pass.init(_rng, init_x)  # params  # DONE
-    opp_params = params
     opt_state = optimizer.init(params=params)  # DONE
 
     if config.initial_model_path is not None:
@@ -140,17 +138,15 @@ def train(config, rng, optimizer):
     )
 
     init = jax.jit(jax.vmap(env.init))
-    skip_fn = jax.jit(make_skip_fn(env.init, env.step, actor_forward_pass, params, opp_params))
     roll_out = jax.jit(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
     calc_gae = jax.jit(make_calc_gae(config, actor_forward_pass))
     update_step = jax.jit(
         make_update_step(config, actor_forward_pass, optimizer=optimizer)
     )
 
-    rng, init_rng, skip_rng = jax.random.split(rng, 3)
-    env_state = init(jax.random.split(init_rng, config.num_envs))
     rng, _rng = jax.random.split(rng)
-    env_state = jax.vmap(skip_fn)(env_state, jax.random.split(skip_rng, config.num_envs))
+    reset_rng = jax.random.split(_rng, config.num_envs)
+    env_state = init(reset_rng)
 
     steps = 0
     terminated_count = 0
@@ -180,13 +176,8 @@ def train(config, rng, optimizer):
         # eval
         if i % config.num_eval_step == 0:
             time_du_sta = time.time()
-            log_info, _, _, seat_count = jit_simple_duplicate_evaluate(runner_state[0], eval_opp_params, eval_rng)
-            print("seat count:", seat_count, flush=True)
+            log_info, _, _ = jit_simple_duplicate_evaluate(runner_state[0], eval_opp_params, eval_rng)
             eval_log = {"eval/IMP_reward": log_info[0].item(), "eval/IMP_SE": log_info[1].item()}
-            eval_log["eval/ix_0"] = seat_count[0].item()
-            eval_log["eval/ix_1"] = seat_count[1].item()
-            eval_log["eval/ix_2"] = seat_count[2].item()
-            eval_log["eval/ix_3"] = seat_count[3].item()
             time_du_end = time.time()
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
@@ -204,10 +195,6 @@ def train(config, rng, optimizer):
         runner_state, traj_batch = roll_out(
             runner_state=runner_state, opp_params=opp_params
         )
-        
-        print("current_payer:", jnp.bincount(runner_state[2].current_player, length=4), flush=True)
-        print("shuffed=0:", (runner_state[2]._shuffled_players == 0).sum(axis=0), flush=True)
-
         time2 = time.time()
         advantages, targets = calc_gae(runner_state=runner_state, traj_batch=traj_batch)
         time3 = time.time()

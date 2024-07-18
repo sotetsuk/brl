@@ -4,6 +4,7 @@ from typing import NamedTuple, Any, Literal
 import jax.numpy as jnp
 import numpy as np
 from src.utils import single_play_step_two_policy_commpetitive
+from pgx.experimental.wrappers import auto_reset
 
 
 class Transition(NamedTuple):
@@ -40,8 +41,7 @@ def make_roll_out(config, env, actor_forward_pass, opp_forward_pass):
 
     def roll_out(runner_state, opp_params):
         step_fn = make_step_fn(
-            init_fn=env.init,
-            step_fn=env.step,
+            step_fn=auto_reset(env.step, env.init),
             actor_forward_pass=actor_forward_pass,
             actor_params=runner_state[0],
             opp_forward_pass=opp_forward_pass,

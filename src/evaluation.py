@@ -53,6 +53,7 @@ def make_simple_duplicate_evaluate(
         )
 
         cum_return = jnp.zeros(num_eval_envs)
+        count = 0
 
         def get_fn(x, i):
             return x[i]
@@ -99,9 +100,6 @@ def make_simple_duplicate_evaluate(
                 rng_key,
                 count,
             ) = tup
-            ixs = jnp.where(state.terminated, 4, state._step_count % 4)
-            count = count.at[ixs].add(1)
-
             (action, pi_probs) = jax.vmap(make_action)(state)
             rng_key, _rng = jax.random.split(rng_key)
             (state, table_a_info, table_b_info) = jax.vmap(step_fn)(
@@ -110,6 +108,7 @@ def make_simple_duplicate_evaluate(
             cum_return = cum_return + jax.vmap(get_fn)(
                 state.rewards, jnp.zeros_like(state.current_player)
             )
+            count += 1
             return (
                 state,
                 table_a_info,
@@ -135,13 +134,13 @@ def make_simple_duplicate_evaluate(
                 table_b_info,
                 cum_return,
                 rng_key,
-                jnp.zeros(5, dtype=jnp.int32),
+                count,
             ),
         )
         std_error = jnp.std(cum_return, ddof=1) / jnp.sqrt(len(cum_return))
         win_rate = jnp.sum(cum_return > 0) / num_eval_envs
         log_info = (cum_return.mean(), std_error, win_rate)
-        return log_info, table_a_info, table_b_info, count
+        return log_info, table_a_info, table_b_info
 
     return duplicate_evaluate
 
