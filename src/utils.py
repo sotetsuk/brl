@@ -33,8 +33,8 @@ def make_skip_fn(
         state, rewards, rng = x
         batch_size = rewards.shape[0]
 
-        logits, _ = jnp.where(
-            state.current_player == teammate_player(target_player),
+        logits = jnp.where(
+            (state.current_player == teammate_player(target_player))[:, None],
             forward_fn(actor_params, state),
             forward_fn(opp_params, state),
         )
