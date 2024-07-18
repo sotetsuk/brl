@@ -21,21 +21,24 @@ def make_skip_fn(
             (state, state.rewards, rng),
         )
         return state.replace(rewards=rewards)  # todo: fix
+    
+    def forward_fn(params, state):
+        logits, _ = forward_pass.apply(
+            params,
+            state.observation.astype(jnp.float32),
+        )
+        return logits
 
     def body_fn(x):
         state, rewards, rng = x
         batch_size = rewards.shape[0]
 
-        params = jax.lax.cond(
+        logits, _ = jnp.where(
             state.current_player == teammate_player(target_player),
-            lambda: actor_params,
-            lambda: opp_params,
+            forward_fn(actor_params, state),
+            forward_fn(opp_params, state),
         )
 
-        logits, _ = forward_pass.apply(
-            params,
-            state.observation.astype(jnp.float32),
-        )
         logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         rng, _rng = jax.random.split(rng)
