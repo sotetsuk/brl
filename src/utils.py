@@ -23,7 +23,7 @@ def make_skip_fn(  # unbatched
         )
         return state.replace(rewards=rewards)  # todo: fix
     
-    def unbatch_forward_fn(params, state):
+    def unbatch_forward_fn(state, params):
         obs = state.observation[None, :]
         logits, _ = forward_pass.apply(params, obs)
         return logits[0]
