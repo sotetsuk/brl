@@ -150,7 +150,7 @@ def train(config, rng, optimizer):
     rng, init_rng, skip_rng = jax.random.split(rng, 3)
     env_state = init(jax.random.split(init_rng, config.num_envs))
     rng, _rng = jax.random.split(rng)
-    env_state = skip_fn(env_state, skip_rng)
+    env_state = jax.vmap(skip_fn)(env_state, jax.random.split(skip_rng, config.num_envs))
 
     steps = 0
     terminated_count = 0
