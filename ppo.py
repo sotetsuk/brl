@@ -199,6 +199,10 @@ def train(config, rng, optimizer):
         runner_state, traj_batch = roll_out(
             runner_state=runner_state, opp_params=opp_params
         )
+        
+        print("current_payer:", jnp.bincount(runner_state[2].current_player, length=4), flush=True)
+        print("shuffed=0:", jnp.bincount(runner_state[2]._shuffled_players == 0, length=4), flush=True)
+
         time2 = time.time()
         advantages, targets = calc_gae(runner_state=runner_state, traj_batch=traj_batch)
         time3 = time.time()
