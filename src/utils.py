@@ -31,7 +31,7 @@ def make_skip_fn(  # unbatched
     def body_fn(x):
         state, rewards, rng = x
 
-        logits = jax.lax.select(
+        logits = jax.lax.cond(
             state.current_player == target_player,
             partial(unbatch_forward_fn, params=actor_params),
             partial(unbatch_forward_fn, params=opp_params),
