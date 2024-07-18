@@ -129,13 +129,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                     loss_actor = -jnp.minimum(loss_actor1, loss_actor2)
                     loss_actor = loss_actor.mean()
 
-                    illegal_action_masked_logits = logits + jnp.finfo(
-                        np.float64
-                    ).min * (~mask)
-                    illegal_action_masked_pi = distrax.Categorical(
-                        logits=illegal_action_masked_logits
-                    )
-                    entropy = illegal_action_masked_pi.entropy().mean()
+                    entropy = pi.entropy().mean()
 
                     pi = distrax.Categorical(logits=logits)
                     illegal_action_probabilities = pi.probs * ~mask
@@ -147,7 +141,6 @@ def make_update_step(config, actor_forward_pass, optimizer):
                         loss_actor
                         + config.vf_coef * value_loss
                         - config.ent_coef * entropy
-                        + config.illegal_action_l2norm_coef * illegal_action_loss
                     )
                     """
                     total_loss = -config["ent_coef"] * entropy
