@@ -181,6 +181,7 @@ def train(config, rng, optimizer):
         if i % config.num_eval_step == 0:
             time_du_sta = time.time()
             log_info, _, _, seat_count = jit_simple_duplicate_evaluate(runner_state[0], eval_opp_params, eval_rng)
+            print("seat count:", seat_count, flush=True)
             eval_log = {"eval/IMP_reward": log_info[0].item(), "eval/IMP_SE": log_info[1].item()}
             eval_log["eval/ix_0"] = seat_count[0].item()
             eval_log["eval/ix_1"] = seat_count[1].item()
