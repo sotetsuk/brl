@@ -3,7 +3,7 @@ import distrax
 from typing import NamedTuple, Any, Literal
 import jax.numpy as jnp
 import numpy as np
-from src.utils import single_play_step_two_policy_commpetitive
+from src.utils import single_play_step_two_policy_commpetitive, mask_illegal
 from pgx.experimental.wrappers import auto_reset
 
 
@@ -23,7 +23,7 @@ def make_roll_out(config, env, actor_forward_pass, opp_forward_pass):
         if config.actor_illegal_action_mask:
 
             def masked_policy(mask, logits):
-                logits = logits + jnp.finfo(np.float64).min * (~mask)
+                logits = mask_illegal(logits, mask)
                 pi = distrax.Categorical(logits=logits)
                 return pi
 
@@ -67,9 +67,9 @@ def make_roll_out(config, env, actor_forward_pass, opp_forward_pass):
                 params,
                 last_obs.astype(jnp.float32),
             )  # DONE
-            rng, _rng = jax.random.split(rng)
             mask = env_state.legal_action_mask
             pi = policy(mask, logits)
+            rng, _rng = jax.random.split(rng)
             action = pi.sample(seed=_rng)
             log_prob = pi.log_prob(action)
             # STEP ENV

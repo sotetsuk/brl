@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import distrax
 import numpy as np
 import optax
-from .models import make_forward_pass
+from src.utils import mask_illegal
 
 
 def make_update_step(config, actor_forward_pass, optimizer):
@@ -11,7 +11,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
         if config.actor_illegal_action_mask:
 
             def masked_policy(mask, logits):
-                logits = logits + jnp.finfo(np.float64).min * (~mask)
+                logits = mask_illegal(logits, mask)
                 pi = distrax.Categorical(logits=logits)
                 return pi
 

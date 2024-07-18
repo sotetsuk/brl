@@ -5,6 +5,7 @@ import distrax
 import pickle
 from src.duplicate import duplicate_step, Table_info
 from src.models import make_forward_pass
+from src.utils import mask_illegal
 
 
 def make_simple_duplicate_evaluate(
@@ -66,9 +67,7 @@ def make_simple_duplicate_evaluate(
             logits, value = team1_forward_pass.apply(
                 team1_params, state.observation
             )  # DONE
-            masked_logits = logits + jnp.finfo(np.float64).min * (
-                ~state.legal_action_mask
-            )
+            masked_logits = mask_illegal(logits, state.legal_action_mask)
             masked_pi = distrax.Categorical(logits=masked_logits)
             pi = distrax.Categorical(logits=logits)
             return (masked_pi.mode(), pi.probs)
@@ -77,9 +76,7 @@ def make_simple_duplicate_evaluate(
             logits, value = team2_forward_pass.apply(
                 team2_params, state.observation
             )  # DONE
-            masked_logits = logits + jnp.finfo(np.float64).min * (
-                ~state.legal_action_mask
-            )
+            masked_logits = mask_illegal(logits, state.legal_action_mask)
             masked_pi = distrax.Categorical(logits=masked_logits)
             pi = distrax.Categorical(logits=logits)
             return (masked_pi.mode(), pi.probs)

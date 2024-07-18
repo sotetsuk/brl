@@ -6,6 +6,12 @@ TRUE = jnp.bool_(True)
 FALSE = jnp.bool_(False)
 
 
+def mask_illegal(
+    logits: jax.Array, legal_action_mask: jax.Array, illegal_value: float = -1e8
+):
+    return jnp.where(legal_action_mask, logits, illegal_value)
+
+
 def single_play_step_two_policy_commpetitive(
     step_fn, actor_forward_pass, actor_params, opp_forward_pass, opp_params
 ):
@@ -32,7 +38,7 @@ def single_play_step_two_policy_commpetitive(
             opp_params,
             state.observation.astype(jnp.float32),
         )
-        logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
+        logits = mask_illegal(logits, state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
         rng, _rng = jax.random.split(rng)
@@ -51,7 +57,7 @@ def single_play_step_two_policy_commpetitive(
             actor_params,
             state.observation.astype(jnp.float32),
         )
-        logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
+        logits = mask_illegal(logits, state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
         rng, _rng = jax.random.split(rng)
@@ -70,7 +76,7 @@ def single_play_step_two_policy_commpetitive(
             opp_params,
             state.observation.astype(jnp.float32),
         )
-        logits = logits + jnp.finfo(jnp.float64).min * (~state.legal_action_mask)
+        logits = mask_illegal(logits, state.legal_action_mask)
         pi = distrax.Categorical(logits=logits)
         action = pi.sample(seed=_rng)
         rng, _rng = jax.random.split(rng)
