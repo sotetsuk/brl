@@ -26,6 +26,7 @@ from src.evaluation import make_simple_duplicate_evaluate
 from src.roll_out import make_roll_out
 from src.gae import make_calc_gae
 from src.update import make_update_step
+from src.utils import make_skip_fn
 
 
 print(jax.default_backend())
@@ -111,6 +112,7 @@ def train(config, rng, optimizer):
     rng, _rng = jax.random.split(rng)
     init_x = jnp.zeros((1,) + env.observation_shape)
     params = actor_forward_pass.init(_rng, init_x)  # params  # DONE
+    opp_params = params
     opt_state = optimizer.init(params=params)  # DONE
 
     if config.initial_model_path is not None:
@@ -138,15 +140,17 @@ def train(config, rng, optimizer):
     )
 
     init = jax.jit(jax.vmap(env.init))
+    skip_fn = jax.jit(make_skip_fn(env.init, env.step, actor_forward_pass, params, opp_params))
     roll_out = jax.jit(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
     calc_gae = jax.jit(make_calc_gae(config, actor_forward_pass))
     update_step = jax.jit(
         make_update_step(config, actor_forward_pass, optimizer=optimizer)
     )
 
+    rng, init_rng, skip_rng = jax.random.split(rng, 3)
+    env_state = init(jax.random.split(init_rng, config.num_envs))
     rng, _rng = jax.random.split(rng)
-    reset_rng = jax.random.split(_rng, config.num_envs)
-    env_state = init(reset_rng)
+    env_state = skip_fn(env_state, skip_rng)
 
     steps = 0
     terminated_count = 0
