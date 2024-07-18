@@ -62,6 +62,7 @@ class PPOConfig(BaseModel):
     actor_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type being trained.
     # opposite config
     use_fsp: bool = False  # Whether to use fictitious self-play.
+    num_latest_models: int = 1_000_000_000  # Number of latest models to use for fictitious self-play.
     # GAE config
     gamma: float = 1  # Discount factor gamma.
     gae_lambda: float = 0.95  # GAE lambda for advantage estimation.
@@ -182,7 +183,7 @@ def train(config, rng, optimizer):
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
         if config.use_fsp:
-            params_list = sorted([path for path in os.listdir(save_model_path) if "params" in path])
+            params_list = list(sorted([path for path in os.listdir(save_model_path) if "params" in path]))[-config.num_latest_models:]
             params_path = np.random.choice(params_list)
             print(f"opposite params: {params_path}")
             with open(os.path.join(save_model_path, params_path), "rb") as f:
