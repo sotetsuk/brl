@@ -26,10 +26,10 @@ def make_skip_fn(
         state, rewards, rng = x
         batch_size = rewards.shape[0]
 
-        params = jax.lax.select(
+        params = jax.lax.cond(
             state.current_player == teammate_player(target_player),
-            actor_params,
-            opp_params,
+            lambda: actor_params,
+            lambda: opp_params,
         )
 
         logits, _ = forward_pass.apply(
