@@ -99,8 +99,6 @@ def make_simple_duplicate_evaluate(
                 rng_key,
                 count,
             ) = tup
-            count = count.at[state._step_count % 4].add(1)
-
             (action, pi_probs) = jax.vmap(make_action)(state)
             rng_key, _rng = jax.random.split(rng_key)
             (state, table_a_info, table_b_info) = jax.vmap(step_fn)(
@@ -109,6 +107,8 @@ def make_simple_duplicate_evaluate(
             cum_return = cum_return + jax.vmap(get_fn)(
                 state.rewards, jnp.zeros_like(state.current_player)
             )
+            
+            count = count.at[state._step_count % 4].add(1)
             return (
                 state,
                 table_a_info,
@@ -134,7 +134,7 @@ def make_simple_duplicate_evaluate(
                 table_b_info,
                 cum_return,
                 rng_key,
-                jnp.zeros(4, dtype=jnp.int32),
+                jnp.zeros(4, dtype=jnp.int32).at[state._step_count % 4].add(1),
             ),
         )
         std_error = jnp.std(cum_return, ddof=1) / jnp.sqrt(len(cum_return))
