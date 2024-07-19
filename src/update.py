@@ -70,9 +70,6 @@ def make_update_step(config, actor_forward_pass, optimizer):
         # UPDATE NETWORK
         def _update_epoch(update_state, unused):
             def _update_minbatch(tup, batch_info):
-                params, opt_state = tup
-                traj_batch, advantages, targets = batch_info
-
                 def _loss_fn(params, traj_batch, gae, targets):
                     # RERUN NETWORK
                     logits, value = actor_forward_pass.apply(
@@ -83,7 +80,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                     illegal_action_prob_sum = (jax.nn.softmax(jax.lax.stop_gradient(logits)) * ~mask).sum(axis=-1).mean()
 
                     logits = mask_illegal(logits, mask)
-                    log_prob = jax.nn.log_softmax(logits)
+                    log_prob = jax.nn.log_softmax(logits)[:, traj_batch.action]
 
                     # CALCULATE VALUE LOSS
                     value_loss = value_loss_fn(
@@ -141,6 +138,9 @@ def make_update_step(config, actor_forward_pass, optimizer):
                         clipflacs,
                         illegal_action_prob_sum,
                     )
+
+                params, opt_state = tup
+                traj_batch, advantages, targets = batch_info
 
                 grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
                 total_loss, grads = grad_fn(
