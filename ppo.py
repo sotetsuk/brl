@@ -217,13 +217,13 @@ def train(config, rng, optimizer):
 
         # make log
         log = {
-            "train/total_loss": float(total_loss[-1][-1]),
-            "train/value_loss": float(value_loss[-1][-1]),
-            "train/loss_actor": float(loss_actor[-1][-1]),
-            "train/illegal_action_prob_sum": float(illegal_action_prob_sum.mean().item()),
-            "train/policy_entropy": float(entropy[-1][-1]),
-            "train/clipflacs": float(clipflacs[-1][-1]),
-            "train/approx_kl": float(approx_kl[-1][-1]),
+            "train/total_loss": float(total_loss.item()),
+            "train/value_loss": float(value_loss.item()),
+            "train/loss_actor": float(loss_actor.item()),
+            "train/illegal_action_prob_sum": float(illegal_action_prob_sum.item()),
+            "train/policy_entropy": float(entropy.item()),
+            "train/clipflacs": float(clipflacs.item()),
+            "train/approx_kl": float(approx_kl.item()),
             "train/ix0": jnp.sum(traj_batch.step_ix.flatten() % 4 == 0).sum().item(),
             "train/ix1": jnp.sum(traj_batch.step_ix.flatten() % 4 == 1).sum().item(),
             "train/ix2": jnp.sum(traj_batch.step_ix.flatten() % 4 == 2).sum().item(),

@@ -124,7 +124,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
 
                     pi = distrax.Categorical(logits=logits)
                     illegal_action_probabilities = pi.probs * ~mask
-                    illegal_action_prob_sum = illegal_action_probabilities.sum(axis=-1).mean()
+                    illegal_action_prob_sum = illegal_action_probabilities.sum(axis=-1)
 
                     total_loss = (
                         loss_actor
@@ -140,24 +140,25 @@ def make_update_step(config, actor_forward_pass, optimizer):
                     ).mean()
 
                     return total_loss, (
-                        value_loss,
-                        loss_actor,
-                        entropy,
-                        approx_kl,
-                        clipflacs,
-                        illegal_action_prob_sum,
+                        value_loss.mean(),
+                        loss_actor.mean(),
+                        entropy.mean(),
+                        approx_kl.mean(),
+                        clipflacs.mean(),
+                        illegal_action_prob_sum.mean(),
                     )
 
                 grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-                total_loss, grads = grad_fn(
+                loss_info, grads = grad_fn(
                     params, traj_batch, advantages, targets
                 )  # DONE
                 updates, opt_state = optimizer.update(grads, opt_state)
                 params = optax.apply_updates(params, updates)  # DONE
+                loss_info = jax.tree_map(jnp.mean, loss_info)
                 return (
                     params,
                     opt_state,
-                ), total_loss  # DONE
+                ), loss_info  # DONE
 
             (
                 params,
@@ -186,7 +187,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                 ),
                 shuffled_batch,
             )
-            (params, opt_state), total_loss = jax.lax.scan(
+            (params, opt_state), loss_info = jax.lax.scan(
                 _update_minbatch, (params, opt_state), minibatches
             )  # DONE
             update_state = (
@@ -197,7 +198,8 @@ def make_update_step(config, actor_forward_pass, optimizer):
                 targets,
                 rng,
             )  # DONE
-            return update_state, total_loss
+            loss_info = jax.tree_map(jnp.mean, loss_info)
+            return update_state, loss_info
 
         update_state = (
             params,
@@ -221,6 +223,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
             terminated_count,
             rng,
         )  # DONE
+        loss_info = jax.tree_map(jnp.mean, loss_info)
         return runner_state, loss_info
 
     return update_step
