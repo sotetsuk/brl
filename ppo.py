@@ -71,8 +71,6 @@ class PPOConfig(BaseModel):
     ent_coef: float = 0.001  # Entropy coefficient for exploration.
     vf_coef: float = 0.5  # Coefficient for value loss.
     # PPO code optimization
-    value_clipping: bool = True  # Whether to apply value clipping.
-    reward_scaling: bool = False  # Whether to scale rewards.
     max_grad_norm: float = 0.5  # Maximum norm for gradients.
     reward_scale: float = 7600  # Hyperparameter for normalizing rewards.
 
