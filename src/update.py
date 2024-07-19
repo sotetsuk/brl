@@ -6,13 +6,6 @@ import optax
 from src.utils import mask_illegal
 
 
-def compute_entropy(logits, mask):
-    probs = jax.nn.softmax(logits)
-    log_probs = jax.nn.log_softmax(logits)
-    x = jnp.where(mask, probs * log_probs, 0)  # avoid nan
-    return -jnp.sum(x, axis=-1)
-
-
 def make_update_step(config, actor_forward_pass, optimizer):
     def make_policy(config):
         def masked_policy(mask, logits):
@@ -127,7 +120,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                     loss_actor = -jnp.minimum(loss_actor1, loss_actor2)
                     loss_actor = loss_actor.mean()
 
-                    entropy = compute_entropy(mask_illegal(logits, mask), mask).mean()
+                    entropy = pi.entropy().mean()
 
                     pi = distrax.Categorical(logits=logits)
                     illegal_action_probabilities = pi.probs * ~mask
