@@ -7,7 +7,7 @@ from src.utils import mask_illegal
 def compute_entropy(logits, mask):
     probs = jax.nn.softmax(logits)
     log_probs = jax.nn.log_softmax(logits)
-    x = jnp.where(mask, 0, probs * log_probs)  # avoid nan
+    x = jnp.where(mask, probs * log_probs, 0)  # avoid nan
     return -jnp.sum(x, axis=-1)
 
 
