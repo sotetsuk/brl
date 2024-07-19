@@ -85,7 +85,7 @@ class Transition(NamedTuple):
     legal_action_mask: jnp.ndarray
 
 
-def train(config, rng, optimizer):
+def train(config, rng):
     config.num_updates = (
         config.total_timesteps // config.num_steps // config.num_envs
     )
@@ -109,6 +109,11 @@ def train(config, rng, optimizer):
     if config.initial_model_path is not None:
         params = pickle.load(open(config.initial_model_path, "rb"))
         print(f"load initial params for actor: {config.initial_model_path}")
+    
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(config.max_grad_norm),
+        optax.adam(config.lr, eps=1e-5),
+    )
 
     # MAKE EVAL
     rng, eval_rng = jax.random.split(rng)
@@ -251,13 +256,8 @@ if __name__ == "__main__":
         save_code=True,
     )
 
-    optimizer = optax.chain(
-        optax.clip_by_global_norm(config.max_grad_norm),
-        optax.adam(config.lr, eps=1e-5),
-    )
-
     rng = jax.random.PRNGKey(config.seed)
     sta = time.time()
-    out = train(config, rng, optimizer)
+    out = train(config, rng)
     end = time.time()
     print("training: time", end - sta)
