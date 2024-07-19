@@ -8,21 +8,12 @@ from src.utils import mask_illegal
 
 def make_update_step(config, actor_forward_pass, optimizer):
     def make_policy(config):
-        if config.actor_illegal_action_mask:
+        def masked_policy(mask, logits):
+            logits = mask_illegal(logits, mask)
+            pi = distrax.Categorical(logits=logits)
+            return pi
 
-            def masked_policy(mask, logits):
-                logits = mask_illegal(logits, mask)
-                pi = distrax.Categorical(logits=logits)
-                return pi
-
-            return masked_policy
-        elif config.actor_illegal_action_penalty:
-
-            def no_masked_policy(mask, logits):
-                pi = distrax.Categorical(logits=logits)
-                return pi
-
-            return no_masked_policy
+        return masked_policy
 
     policy = make_policy(config)
 

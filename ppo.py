@@ -77,8 +77,6 @@ class PPOConfig(BaseModel):
     reward_scale: float = 7600  # Hyperparameter for normalizing rewards.
     # illegal action config
     actor_illegal_action_mask: bool = True  # Whether to apply illegal action masking.
-    actor_illegal_action_penalty: bool = False  # Whether to apply a penalty for illegal actions.
-    illegal_action_penalty: float = -1  # Magnitude of penalty for illegal actions.
     illegal_action_l2norm_coef: float = 0  # Coefficient for L2 norm to suppress output for illegal actions.
 
 
