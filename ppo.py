@@ -86,14 +86,6 @@ class Transition(NamedTuple):
 
 
 def train(config, rng):
-    config.num_updates = (
-        config.total_timesteps // config.num_steps // config.num_envs
-    )
-    config.num_minibatches = (
-        config.num_envs * config.num_steps // config.minibatch_size
-    )
-    if not os.path.isdir("dds_results"):
-        download_dds_results()
     env = BridgeBidding("dds_results/dds_results_10M.npy")
 
     actor_forward_pass = make_forward_pass(
@@ -243,11 +235,11 @@ def train(config, rng):
         with open(os.path.join(save_model_path, f"params-{i + 1:08}.pkl"), "wb") as writer:
             pickle.dump(runner_state[0], writer)
 
-    return runner_state
-
 
 if __name__ == "__main__":
     config = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
+    config.num_updates = config.total_timesteps // config.num_steps // config.num_envs
+    config.num_minibatches = config.num_envs * config.num_steps // config.minibatch_size
     print(config)
     wandb.init(
         project="ppo-bridge",
@@ -256,8 +248,7 @@ if __name__ == "__main__":
         save_code=True,
     )
 
+    download_dds_results()
+ 
     rng = jax.random.PRNGKey(config.seed)
-    sta = time.time()
-    out = train(config, rng)
-    end = time.time()
-    print("training: time", end - sta)
+    train(config, rng)
