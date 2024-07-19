@@ -1,22 +1,17 @@
 import jax
 import jax.numpy as jnp
-import distrax
-import numpy as np
 import optax
 from src.utils import mask_illegal
 
 
+def compute_entropy(logits, mask):
+    probs = jax.nn.softmax(logits)
+    log_probs = jax.nn.log_softmax(logits)
+    x = jnp.where(mask, 0, probs * log_probs)  # avoid nan
+    return -jnp.sum(x, axis=-1)
+
+
 def make_update_step(config, actor_forward_pass, optimizer):
-    def make_policy(config):
-        def masked_policy(mask, logits):
-            logits = mask_illegal(logits, mask)
-            pi = distrax.Categorical(logits=logits)
-            return pi
-
-        return masked_policy
-
-    policy = make_policy(config)
-
     def _get(x, i):
         return x[i]
 
@@ -84,8 +79,11 @@ def make_update_step(config, actor_forward_pass, optimizer):
                         params, traj_batch.obs.astype(jnp.float32)
                     )  # DONE
                     mask = traj_batch.legal_action_mask
-                    pi = policy(mask, logits)
-                    log_prob = pi.log_prob(traj_batch.action)
+
+                    illegal_action_prob_sum = (jax.nn.softmax(jax.lax.stop_gradient(logits)) * ~mask).sum(axis=-1).mean()
+
+                    logits = mask_illegal(logits, mask)
+                    log_prob = jax.nn.log_softmax(logits)
 
                     # CALCULATE VALUE LOSS
                     value_loss = value_loss_fn(
@@ -120,11 +118,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                     loss_actor = -jnp.minimum(loss_actor1, loss_actor2)
                     loss_actor = loss_actor.mean()
 
-                    entropy = pi.entropy().mean()
-
-                    pi = distrax.Categorical(logits=logits)
-                    illegal_action_probabilities = pi.probs * ~mask
-                    illegal_action_prob_sum = illegal_action_probabilities.sum(axis=-1).mean()
+                    entropy = compute_entropy(logits, mask).mean()
 
                     total_loss = (
                         loss_actor
