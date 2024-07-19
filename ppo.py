@@ -75,10 +75,6 @@ class PPOConfig(BaseModel):
     reward_scaling: bool = False  # Whether to scale rewards.
     max_grad_norm: float = 0.5  # Maximum norm for gradients.
     reward_scale: float = 7600  # Hyperparameter for normalizing rewards.
-    # illegal action config
-    actor_illegal_action_mask: bool = True  # Whether to apply illegal action masking.
-    illegal_action_l2norm_coef: float = 0  # Coefficient for L2 norm to suppress output for illegal actions.
-
 
 
 class Transition(NamedTuple):
@@ -216,7 +212,7 @@ def train(config, rng, optimizer):
             entropy,
             approx_kl,
             clipflacs,
-            illegal_action_loss,
+            illegal_action_prob_sum,
         ) = loss_info
 
         # make log
@@ -224,7 +220,7 @@ def train(config, rng, optimizer):
             "train/total_loss": float(total_loss[-1][-1]),
             "train/value_loss": float(value_loss[-1][-1]),
             "train/loss_actor": float(loss_actor[-1][-1]),
-            "train/illegal_action_loss": float(illegal_action_loss[-1][-1]),
+            "train/illegal_action_prob_sum": float(illegal_action_prob_sum.mean().item()),
             "train/policy_entropy": float(entropy[-1][-1]),
             "train/clipflacs": float(clipflacs[-1][-1]),
             "train/approx_kl": float(approx_kl[-1][-1]),

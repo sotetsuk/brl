@@ -124,9 +124,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
 
                     pi = distrax.Categorical(logits=logits)
                     illegal_action_probabilities = pi.probs * ~mask
-                    illegal_action_loss = (
-                        jnp.linalg.norm(illegal_action_probabilities, ord=2) / 2
-                    )
+                    illegal_action_prob_sum = illegal_action_probabilities.sum(axis=-1).mean()
 
                     total_loss = (
                         loss_actor
@@ -147,7 +145,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                         entropy,
                         approx_kl,
                         clipflacs,
-                        illegal_action_loss,
+                        illegal_action_sum,
                     )
 
                 grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
