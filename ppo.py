@@ -40,8 +40,8 @@ class PPOConfig(BaseModel):
     total_timesteps: int = 2_621_440_000  # Total number of steps by the end of training.
     update_epochs: int = 10  # Number of epochs for PPO update.
     minibatch_size: int = 1024  # Minibatch size.
-    num_minibatches: int = 128  # Number of minibatches per epoch.
-    num_updates: int = 10000  # Number of parameter updates until training concludes.
+    num_minibatches: int | None = None  # automatically calculated
+    num_updates: int | None = None  # automatically calculated
     # dataset config
     dds_results_dir: str = "dds_results"  # Path to the directory where dds_results are located.
     # eval config
@@ -49,7 +49,8 @@ class PPOConfig(BaseModel):
     eval_opp_activation: str = "relu"  # Activation function of the opponent during evaluation.
     eval_opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during evaluation.
     eval_opp_model_path: str = "bridge_models/model-sl.pkl"  # Path to the baseline model prepared for evaluation.
-    num_eval_step: int = 100  # Interval for evaluation.
+    num_evals: int = 20  # numbef of evaluation in entire training
+    num_eval_step: int | None = None  # automatically calculated
     # log config
     save_model: bool = True  # Whether to save the trained model.
     save_model_interval: int = 100  # Interval for saving the trained model.
@@ -155,7 +156,7 @@ def train(config, rng):
     with open(config.eval_opp_model_path, "rb") as f:
         eval_opp_params = pickle.load(f)
     print("start training")
-    for i in range(config.num_updates):
+    for i in range(config.num_updates + 1):
         print(f"--------------iteration {i}---------------")
         # save model
         if i % config.save_model_interval == 0:
@@ -240,6 +241,7 @@ if __name__ == "__main__":
     config = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
     config.num_updates = config.total_timesteps // config.num_steps // config.num_envs
     config.num_minibatches = config.num_envs * config.num_steps // config.minibatch_size
+    config.num_eval_step = config.num_updates // config.num_evals
     print(config)
     wandb.init(
         project="ppo-bridge",
