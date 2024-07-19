@@ -1,9 +1,8 @@
 import jax
-import distrax
 from typing import NamedTuple, Any, Literal
 import jax.numpy as jnp
 import numpy as np
-from src.utils import single_play_step_two_policy_commpetitive, mask_illegal
+from src.utils import single_play_step_two_policy_commpetitive, masked_policy
 from pgx.experimental.wrappers import auto_reset
 
 
@@ -19,16 +18,7 @@ class Transition(NamedTuple):
 
 
 def make_roll_out(config, env, actor_forward_pass, opp_forward_pass):
-    def make_policy(config):
-        def masked_policy(mask, logits):
-            logits = mask_illegal(logits, mask)
-            pi = distrax.Categorical(logits=logits)
-            return pi
-
-        return masked_policy
-
     make_step_fn = single_play_step_two_policy_commpetitive
-    policy = make_policy(config)
 
     def roll_out(runner_state, opp_params):
         step_fn = make_step_fn(
@@ -59,7 +49,7 @@ def make_roll_out(config, env, actor_forward_pass, opp_forward_pass):
                 last_obs.astype(jnp.float32),
             )  # DONE
             mask = env_state.legal_action_mask
-            pi = policy(mask, logits)
+            pi = masked_policy(mask, logits)
             rng, _rng = jax.random.split(rng)
             action = pi.sample(seed=_rng)
             log_prob = pi.log_prob(action)

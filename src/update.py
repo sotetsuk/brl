@@ -3,64 +3,20 @@ import jax.numpy as jnp
 import distrax
 import numpy as np
 import optax
-from src.utils import mask_illegal
+from src.utils import masked_policy
 
 
 def make_update_step(config, actor_forward_pass, optimizer):
-    def make_policy(config):
-        def masked_policy(mask, logits):
-            logits = mask_illegal(logits, mask)
-            pi = distrax.Categorical(logits=logits)
-            return pi
-
-        return masked_policy
-
-    policy = make_policy(config)
-
-    def _get(x, i):
-        return x[i]
-
-    def make_reward_scaling(config):
-        if config.reward_scaling:
-
-            def reward_scaling(gae):
-                return (gae - gae.mean()) / (gae.std() + 1e-8)
-
-            return reward_scaling
-
-        else:
-
-            def no_scaling(gae):
-                return gae
-
-            return no_scaling
-
-    reward_scaling = make_reward_scaling(config)
-
-    def make_value_loss_fn(config):
-        if config.value_clipping:
-
-            def clipped_value_loss_fn(value, traj_batch, targets):
-                value_pred_clipped = traj_batch.value + (value - traj_batch.value).clip(
-                    -config.clip_eps, config.clip_eps
-                )
-                value_losses = jnp.square(value - targets)
-                value_losses_clipped = jnp.square(value_pred_clipped - targets)
-                value_loss = (
-                    0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
-                )
-                return value_loss
-
-            return clipped_value_loss_fn
-        else:
-
-            def value_loss_fn(value, traj_batch, targets):
-                value_loss = 0.5 * jnp.square(value - targets).mean()
-                return value_loss
-
-            return value_loss_fn
-
-    value_loss_fn = make_value_loss_fn(config)
+    def value_loss_fn(value, traj_batch, targets):
+        value_pred_clipped = traj_batch.value + (value - traj_batch.value).clip(
+            -config.clip_eps, config.clip_eps
+        )
+        value_losses = jnp.square(value - targets)
+        value_losses_clipped = jnp.square(value_pred_clipped - targets)
+        value_loss = (
+            0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
+        )
+        return value_loss
 
     def update_step(runner_state, traj_batch, advantages, targets):
         (
@@ -84,7 +40,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                         params, traj_batch.obs.astype(jnp.float32)
                     )  # DONE
                     mask = traj_batch.legal_action_mask
-                    pi = policy(mask, logits)
+                    pi = masked_policy(mask, logits)
                     log_prob = pi.log_prob(traj_batch.action)
 
                     # CALCULATE VALUE LOSS
@@ -107,7 +63,6 @@ def make_update_step(config, actor_forward_pass, optimizer):
                     ratio = jnp.exp(log_prob - traj_batch.log_prob)
 
                     # gae標準化
-                    gae = reward_scaling(gae)
                     loss_actor1 = ratio * gae
                     loss_actor2 = (
                         jnp.clip(

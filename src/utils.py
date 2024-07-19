@@ -12,6 +12,12 @@ def mask_illegal(
     return jnp.where(legal_action_mask, logits, illegal_value)
 
 
+def masked_policy(mask, logits):
+    logits = mask_illegal(logits, mask)
+    pi = distrax.Categorical(logits=logits)
+    return pi
+
+
 def single_play_step_two_policy_commpetitive(
     step_fn, actor_forward_pass, actor_params, opp_forward_pass, opp_params
 ):
