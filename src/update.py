@@ -145,7 +145,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                         entropy,
                         approx_kl,
                         clipflacs,
-                        illegal_action_sum,
+                        illegal_action_prob_sum,
                     )
 
                 grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
