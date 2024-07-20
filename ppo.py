@@ -97,17 +97,17 @@ def train(config, rng):
     rng, _rng = jax.random.split(rng)
     init_x = jnp.zeros((1,) + env.observation_shape)
     params = actor_forward_pass.init(_rng, init_x)  # params  # DONE
+    
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(config.max_grad_norm),
+        optax.adam(config.lr, eps=1e-5),
+    )
     opt_state = optimizer.init(params=params)  # DONE
 
     if config.initial_model_path is not None:
         params = pickle.load(open(config.initial_model_path, "rb"))
         print(f"load initial params for actor: {config.initial_model_path}")
     
-    optimizer = optax.chain(
-        optax.clip_by_global_norm(config.max_grad_norm),
-        optax.adam(config.lr, eps=1e-5),
-    )
-
     # MAKE EVAL
     rng, eval_rng = jax.random.split(rng)
     eval_env = BridgeBidding("dds_results/dds_results_500K.npy")
