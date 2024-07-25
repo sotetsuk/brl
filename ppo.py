@@ -253,11 +253,11 @@ def train(config, rng):
 
     simple_duplicate_evaluate = make_simple_duplicate_evaluate(
         eval_env=eval_env,
-        team1_activation=config.actor_activation,
-        team1_model_type=config.actor_model_type,
-        team2_activation=config.actor_activation,
-        team2_model_type=config.actor_model_type,
-        num_eval_envs=config.num_eval_envs,
+        team1_activation=config["actor_activation"],
+        team1_model_type=config["actor_model_type"],
+        team2_activation=config["actor_activation"],
+        team2_model_type=config["actor_model_type"],
+        num_eval_envs=config["num_eval_envs"],
     )
     jit_simple_duplicate_evaluate = jax.jit(simple_duplicate_evaluate)
 
