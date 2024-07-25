@@ -250,38 +250,16 @@ def train(config, rng):
     # MAKE EVAL
     rng, eval_rng = jax.random.split(rng)
     eval_env = BridgeBidding("dds_results/test_000.npy")
-    simple_evaluate = make_simple_evaluate(
-        eval_env=eval_env,
-        team1_activation=config["actor_activation"],
-        team1_model_type=config["actor_model_type"],
-        team2_activation=config["eval_opp_activation"],
-        team2_model_type=config["eval_opp_model_type"],
-        team2_model_path=config["eval_opp_model_path"],
-        num_eval_envs=config["num_eval_envs"],
-    )
+
     simple_duplicate_evaluate = make_simple_duplicate_evaluate(
         eval_env=eval_env,
-        team1_activation=config["actor_activation"],
-        team1_model_type=config["actor_model_type"],
-        team2_activation=config["actor_activation"],
-        team2_model_type=config["actor_model_type"],
-        num_eval_envs=config["num_prioritized_envs"],
+        team1_activation=config.actor_activation,
+        team1_model_type=config.actor_model_type,
+        team2_activation=config.actor_activation,
+        team2_model_type=config.actor_model_type,
+        num_eval_envs=config.num_eval_envs,
     )
-    duplicate_evaluate = make_evaluate(
-        eval_env=eval_env,
-        team1_activation=config["actor_activation"],
-        team1_model_type=config["actor_model_type"],
-        team2_activation=config["eval_opp_activation"],
-        team2_model_type=config["eval_opp_model_type"],
-        team2_model_path=config["eval_opp_model_path"],
-        num_eval_envs=config["num_eval_envs"],
-        game_mode=config["game_mode"],
-        duplicate=True,
-    )
-    jit_simple_evaluate = jax.jit(simple_evaluate)
     jit_simple_duplicate_evaluate = jax.jit(simple_duplicate_evaluate)
-    jit_diplicate_evaluate = jax.jit(duplicate_evaluate)
-    jit_make_evaluate_log = jax.jit(make_evaluate_log)
 
     # INIT UPDATE FUNCTION
 
@@ -344,6 +322,9 @@ def train(config, rng):
                 config["save_model_path"],
             )
         )
+
+    with open(config.eval_opp_model_path, "rb") as f:
+        eval_opp_params = pickle.load(f)
     print("start training")
     for i in range(config["num_updates"]):
         print(f"--------------iteration {i}---------------")
@@ -363,106 +344,92 @@ def train(config, rng):
 
         # eval
         time_eval_sta = time.time()
-        R = jit_simple_evaluate(runner_state[0], eval_rng)
         time_eval_end = time.time()
         print(f"eval time: {time_eval_end-time_eval_sta}")
         if i % config["num_eval_step"] == 0:
             time_du_sta = time.time()
-            log_info, _, _ = jit_diplicate_evaluate(runner_state[0], eval_rng)
-            eval_log = jit_make_evaluate_log(log_info)
+            log_info, _, _ = jit_simple_duplicate_evaluate(runner_state[0], eval_opp_params, eval_rng)
+            eval_log = {"eval/IMP_reward": log_info[0].item(), "eval/IMP_SE": log_info[1].item()}
             time_du_end = time.time()
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
         if config["self_play"]:
-            (imp_opp, _, _), _, _ = jit_simple_duplicate_evaluate(
-                team1_params=runner_state[0],
-                team2_params=opp_params,
-                rng_key=eval_rng,
-            )
-            if imp_opp >= config["threshold_model_zoo"]:
-                params_list = sorted(
-                    [
-                        path
-                        for path in os.listdir(
-                            os.path.join(
-                                config["log_path"],
-                                config["exp_name"],
-                                config["save_model_path"],
-                            )
-                        )
-                        if "params" in path
-                    ]
-                )
-                if (len(params_list) != 0) and np.random.binomial(
-                    size=1, n=1, p=config["ratio_model_zoo"]
-                ):
-                    if config["prioritized_fictitious"]:
-                        league_sta = time.time()
-                        win_rate_list = np.zeros(len(params_list))
-                        imp_list = np.zeros(len(params_list))
-                        team1_params = runner_state[0]
-                        for i in range(len(params_list)):
-                            team2_params = pickle.load(
-                                open(
-                                    os.path.join(
-                                        config["log_path"],
-                                        config["exp_name"],
-                                        config["save_model_path"],
-                                        params_list[i],
-                                    ),
-                                    "rb",
-                                )
-                            )
-                            log, _, _ = jit_simple_duplicate_evaluate(
-                                team1_params=team1_params,
-                                team2_params=team2_params,
-                                rng_key=eval_rng,
-                            )
-                            win_rate_list[i] = log[2]
-                            imp_list[i] = log[0]
-                        league_end = time.time()
-                        print(f"league time: {league_end - league_sta}")
-
-                        def softmax(x):
-                            exp_values = np.exp(
-                                (x - np.max(x, axis=-1, keepdims=True))
-                                / config["prior_t"]
-                            )
-                            probabilities = exp_values / np.sum(
-                                exp_values, axis=-1, keepdims=True
-                            )
-                            return probabilities
-
-                        probabilities = softmax(-imp_list)
-                        params_index = np.random.choice(
-                            len(probabilities), p=probabilities
-                        )
-                        params_path = params_list[params_index]
-                    else:
-                        params_path = np.random.choice(params_list)
-                    print(f"opposite params: {params_path}")
-                    opp_params = pickle.load(
-                        open(
-                            os.path.join(
-                                config["log_path"],
-                                config["exp_name"],
-                                config["save_model_path"],
-                                params_path,
-                            ),
-                            "rb",
+            params_list = sorted(
+                [
+                    path
+                    for path in os.listdir(
+                        os.path.join(
+                            config["log_path"],
+                            config["exp_name"],
+                            config["save_model_path"],
                         )
                     )
+                    if "params" in path
+                ]
+            )
+            if (len(params_list) != 0) and np.random.binomial(
+                size=1, n=1, p=config["ratio_model_zoo"]
+            ):
+                if config["prioritized_fictitious"]:
+                    league_sta = time.time()
+                    win_rate_list = np.zeros(len(params_list))
+                    imp_list = np.zeros(len(params_list))
+                    team1_params = runner_state[0]
+                    for i in range(len(params_list)):
+                        team2_params = pickle.load(
+                            open(
+                                os.path.join(
+                                    config["log_path"],
+                                    config["exp_name"],
+                                    config["save_model_path"],
+                                    params_list[i],
+                                ),
+                                "rb",
+                            )
+                        )
+                        log, _, _ = jit_simple_duplicate_evaluate(
+                            team1_params=team1_params,
+                            team2_params=team2_params,
+                            rng_key=eval_rng,
+                        )
+                        win_rate_list[i] = log[2]
+                        imp_list[i] = log[0]
+                    league_end = time.time()
+                    print(f"league time: {league_end - league_sta}")
+
+                    def softmax(x):
+                        exp_values = np.exp(
+                            (x - np.max(x, axis=-1, keepdims=True))
+                            / config["prior_t"]
+                        )
+                        probabilities = exp_values / np.sum(
+                            exp_values, axis=-1, keepdims=True
+                        )
+                        return probabilities
+
+                    probabilities = softmax(-imp_list)
+                    params_index = np.random.choice(
+                        len(probabilities), p=probabilities
+                    )
+                    params_path = params_list[params_index]
                 else:
-                    print("opposite params: latest")
-                    opp_params = runner_state[0]
+                    params_path = np.random.choice(params_list)
+                print(f"opposite params: {params_path}")
+                opp_params = pickle.load(
+                    open(
+                        os.path.join(
+                            config["log_path"],
+                            config["exp_name"],
+                            config["save_model_path"],
+                            params_path,
+                        ),
+                        "rb",
+                    )
+                )
             else:
                 print("opposite params: latest")
+                opp_params = runner_state[0]
                 opp_params = opp_params
-        (imp_opp_before, _, _), _, _ = jit_simple_duplicate_evaluate(
-            team1_params=runner_state[0],
-            team2_params=opp_params,
-            rng_key=eval_rng,
-        )
         time1 = time.time()
         runner_state, traj_batch = roll_out(
             runner_state=runner_state, opp_params=opp_params
@@ -477,11 +444,6 @@ def train(config, rng):
             targets=targets,
         )
         time4 = time.time()
-        (imp_opp_after, _, _), _, _ = jit_simple_duplicate_evaluate(
-            team1_params=runner_state[0],
-            team2_params=opp_params,
-            rng_key=eval_rng,
-        )
 
         print(f"rollout time: {time2 - time1}")
         print(f"calc gae time: {time3 - time2}")
@@ -499,7 +461,6 @@ def train(config, rng):
 
         # make log
         log = {
-            "train/score": float(R),
             "train/total_loss": float(total_loss[-1][-1]),
             "train/value_loss": float(value_loss[-1][-1]),
             "train/loss_actor": float(loss_actor[-1][-1]),
@@ -512,8 +473,6 @@ def train(config, rng):
                     (i + 1) * config["update_epochs"] * config["num_minibatches"]
                 )
             ),
-            "train/imp_opp_before": float(imp_opp_before),
-            "train/imp_opp_after": float(imp_opp_after),
             "board_num": int(runner_state[4]),
             "steps": steps,
         }
