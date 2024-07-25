@@ -323,7 +323,7 @@ def train(config, rng):
             )
         )
 
-    with open(config.eval_opp_model_path, "rb") as f:
+    with open(config["eval_opp_model_path"], "rb") as f:
         eval_opp_params = pickle.load(f)
     print("start training")
     for i in range(config["num_updates"]):
