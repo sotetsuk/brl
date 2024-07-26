@@ -75,6 +75,9 @@ class PPOConfig(BaseModel):
     max_grad_norm: float = 0.5  # Maximum norm for gradients.
     reward_scale: float = 7600  # Hyperparameter for normalizing rewards.
 
+    class Config:
+        extra = "forbid"
+
 
 class Transition(NamedTuple):
     done: jnp.ndarray
