@@ -25,7 +25,7 @@ from src.models import make_forward_pass
 from src.evaluation import make_simple_duplicate_evaluate
 from src.roll_out import make_roll_out
 from src.gae import make_calc_gae
-from src.update import make_update_step
+from src.update import make_update_step, make_warmup_step
 
 
 print(jax.default_backend())
@@ -74,6 +74,7 @@ class PPOConfig(BaseModel):
     # PPO code optimization
     max_grad_norm: float = 0.5  # Maximum norm for gradients.
     reward_scale: float = 7600  # Hyperparameter for normalizing rewards.
+    num_warmup_steps: int = 100
 
     class Config:
         extra = "forbid"
@@ -137,6 +138,9 @@ def train(config, rng):
     update_step = jax.jit(
         make_update_step(config, actor_forward_pass, optimizer=optimizer)
     )
+    warmup_step = jax.jit(
+        make_warmup_step(config, actor_forward_pass, optimizer=optimizer)
+    )
 
     rng, _rng = jax.random.split(rng)
     reset_rng = jax.random.split(_rng, config.num_envs)
@@ -192,12 +196,21 @@ def train(config, rng):
         time2 = time.time()
         advantages, targets = calc_gae(runner_state=runner_state, traj_batch=traj_batch)
         time3 = time.time()
-        runner_state, loss_info = update_step(
-            runner_state=runner_state,
-            traj_batch=traj_batch,
-            advantages=advantages,
-            targets=targets,
-        )
+
+        if i > config.num_warmup_steps:
+            runner_state, loss_info = update_step(
+                runner_state=runner_state,
+                traj_batch=traj_batch,
+                advantages=advantages,
+                targets=targets,
+            )
+        else:
+            runner_state, loss_info = warmup_step(
+                runner_state=runner_state,
+                traj_batch=traj_batch,
+                advantages=advantages,
+                targets=targets,
+            )
         time4 = time.time()
 
         print(f"rollout time: {time2 - time1}")
