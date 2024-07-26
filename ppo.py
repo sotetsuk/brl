@@ -43,7 +43,7 @@ class PPOConfig(BaseModel):
     num_minibatches: int | None = None  # automatically calculated
     num_updates: int | None = None  # automatically calculated
     # dataset config
-    train_dataset: str = "dds_results/bridge_dataset_10M.npy"  # Path to the training dataset.
+    train_dataset: str = "dds_results/dds_results_10M.npy"  # Path to the training dataset.
     # eval config
     num_eval_envs: int = 100_000  # Number of parallel environments for evaluation.
     eval_opp_activation: str = "relu"  # Activation function of the opponent during evaluation.
