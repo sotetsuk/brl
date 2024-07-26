@@ -37,6 +37,7 @@ def make_warmup_step(config, actor_forward_pass, optimizer):
                         logits, 
                         mask.astype(jnp.float32) / mask.astype(jnp.float32).sum(axis=-1, keepdims=True)
                     )
+                    loss_actor = loss_actor.mean()
 
                     pi = distrax.Categorical(logits=logits)
                     illegal_action_probabilities = pi.probs * ~mask
