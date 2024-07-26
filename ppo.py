@@ -43,6 +43,7 @@ class PPOConfig(BaseModel):
     num_minibatches: int | None = None  # automatically calculated
     num_updates: int | None = None  # automatically calculated
     # dataset config
+    train_dataset: str = "bridge_datasets/bridge_dataset_10M.npy"  # Path to the training dataset.
     dds_results_dir: str = "dds_results"  # Path to the directory where dds_results are located.
     # eval config
     num_eval_envs: int = 100_000  # Number of parallel environments for evaluation.
@@ -87,7 +88,7 @@ class Transition(NamedTuple):
 
 
 def train(config, rng):
-    env = BridgeBidding("dds_results/dds_results_10M.npy")
+    env = BridgeBidding(config.train_dataset)
 
     actor_forward_pass = make_forward_pass(
         activation=config.actor_activation,
