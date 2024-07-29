@@ -197,9 +197,7 @@ def train(config, rng):
             opp_params = runner_state[0]
 
         time1 = time.time()
-        runner_state, traj_batch = roll_out(
-            runner_state=runner_state, opp_params=opp_params
-        )
+        runner_state, traj_batch = roll_out(runner_state, opp_params)
         time2 = time.time()
         advantages, targets = calc_gae(runner_state=runner_state, traj_batch=traj_batch)
         time3 = time.time()
