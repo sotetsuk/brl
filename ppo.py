@@ -198,8 +198,6 @@ def train(config, rng):
             opp_params = runner_state[0]
             opp_params = jax.device_put_replicated(opp_params, devices)
 
-        print(jax.tree_map(lambda x: x.shape, runner_state))
-        print(jax.tree_map(lambda x: x.shape, opp_params))
         time1 = time.time()
         runner_state, traj_batch = roll_out(runner_state=runner_state, opp_params=opp_params)
         time2 = time.time()
