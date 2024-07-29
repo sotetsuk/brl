@@ -117,6 +117,7 @@ def train(config, rng):
     
     # MAKE EVAL
     rng, eval_rng = jax.random.split(rng)
+    eval_rng = jax.random.split(eval_rng, num_devices)
     eval_env = BridgeBidding("dds_results/dds_results_500K.npy")
     simple_duplicate_evaluate = make_simple_duplicate_evaluate(
         eval_env=eval_env,
@@ -150,24 +151,23 @@ def train(config, rng):
     steps = 0
     terminated_count = 0
     rng, _rng = jax.random.split(rng)
+    rngs = jax.random.split(_rng, num_devices)
     runner_state = (
-        params,
-        opt_state,
+        jax.device_put_replicated(params, devices),
+        jax.device_put_replicated(opt_state, devices),
         env_state,
         env_state.observation,
-        terminated_count,
-        _rng,
+        jax.device_put_replicated(terminated_count, devices),
+        rngs,
     )  # DONE
 
     save_model_path = os.path.join(config.log_path, config.exp_name, config.save_model_path)
     os.makedirs(save_model_path, exist_ok=True)
     with open(config.eval_opp_model_path, "rb") as f:
         eval_opp_params = pickle.load(f)
+        eval_opp_params = jax.device_put_replicated(eval_opp_params, devices)
     print("start training")
 
-    # duplicate for pmap
-    runner_state, eval_opp_params = jax.device_put_replicated((runner_state, eval_opp_params), devices)
-    eval_rng = jax.random.split(eval_rng, num_devices)
 
     for i in range(config.num_updates + 1):
         print(f"--------------iteration {i}---------------")
