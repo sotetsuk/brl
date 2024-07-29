@@ -50,8 +50,7 @@ class PPOConfig(BaseModel):
     eval_opp_activation: str = "relu"  # Activation function of the opponent during evaluation.
     eval_opp_model_type: Literal["DeepMind", "FAIR"] = "DeepMind"  # Model type of the opponent during evaluation.
     eval_opp_model_path: str = "bridge_models/model-sl.pkl"  # Path to the baseline model prepared for evaluation.
-    num_evals: int = 20  # numbef of evaluation in entire training
-    num_eval_step: int | None = None  # automatically calculated
+    num_eval_step: int = 500  # automatically calculated
     # log config
     save_model: bool = True  # Whether to save the trained model.
     save_model_interval: int = 100  # Interval for saving the trained model.
@@ -251,7 +250,6 @@ if __name__ == "__main__":
     config.num_devices = len(jax.devices())
     config.num_updates = config.total_timesteps // config.num_steps // config.num_envs // config.num_devices
     config.num_minibatches = config.num_envs * config.num_steps // config.minibatch_size // config.num_devices
-    config.num_eval_step = config.num_updates // config.num_evals
     print(config)
     wandb.init(
         project="ppo-bridge",
