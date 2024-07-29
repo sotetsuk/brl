@@ -136,7 +136,7 @@ def train(config, rng):
     )
 
     init = jax.pmap(jax.vmap(env.init))
-    roll_out = jax.pmap(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
+    roll_out = jax.pmap(make_roll_out(config, env, actor_forward_pass, opp_forward_pass), in_axes=(0, None))
     calc_gae = jax.pmap(make_calc_gae(config, actor_forward_pass))
     update_step = jax.pmap(
         make_update_step(config, actor_forward_pass, optimizer=optimizer),
@@ -192,11 +192,9 @@ def train(config, rng):
             print(f"opposite params: {params_path}")
             with open(os.path.join(save_model_path, params_path), "rb") as f:
                 opp_params = pickle.load(f)
-                opp_params = jax.device_put((opp_params,), devices)
         else:
             print("opposite params: latest")
             opp_params = runner_state[0]
-            opp_params = jax.device_put((opp_params,), devices)
 
         time1 = time.time()
         runner_state, traj_batch = roll_out(
