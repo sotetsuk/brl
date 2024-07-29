@@ -136,7 +136,7 @@ def train(config, rng):
     )
 
     init = jax.pmap(jax.vmap(env.init))
-    roll_out = jax.pmap(make_roll_out(config, env, actor_forward_pass, opp_forward_pass), in_axes=(0, None))
+    roll_out = jax.pmap(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
     calc_gae = jax.pmap(make_calc_gae(config, actor_forward_pass))
     update_step = jax.pmap(
         make_update_step(config, actor_forward_pass, optimizer=optimizer),
@@ -197,7 +197,7 @@ def train(config, rng):
             opp_params = runner_state[0]
 
         time1 = time.time()
-        runner_state, traj_batch = roll_out(runner_state, opp_params)
+        runner_state, traj_batch = roll_out(runner_state=runner_state, opp_params=opp_params)
         time2 = time.time()
         advantages, targets = calc_gae(runner_state=runner_state, traj_batch=traj_batch)
         time3 = time.time()
