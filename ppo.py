@@ -33,6 +33,7 @@ print(jax.local_devices())
 
 
 class PPOConfig(BaseModel):
+    num_devices: int = 1  # Number of devices for parallel computation.
     seed: int = 0  # Seed for random number generation.
     lr: float = 0.000001  # Learning rate for Adam optimizer.
     num_envs: int = 8192  # Number of parallel environments for actor rollout.
@@ -91,8 +92,6 @@ class Transition(NamedTuple):
 
 def train(config, rng):
     devices = jax.local_devices()
-    num_devices = len(devices)
-    print(f"num_devices: {num_devices}")
 
     env = BridgeBidding(config.train_dataset)
 
@@ -117,7 +116,7 @@ def train(config, rng):
     
     # MAKE EVAL
     rng, eval_rng = jax.random.split(rng)
-    eval_rng = jax.random.split(eval_rng, num_devices)
+    eval_rng = jax.random.split(eval_rng, config.num_devices)
     eval_env = BridgeBidding("dds_results/dds_results_500K.npy")
     simple_duplicate_evaluate = make_simple_duplicate_evaluate(
         eval_env=eval_env,
@@ -145,13 +144,13 @@ def train(config, rng):
     )
 
     rng, _rng = jax.random.split(rng)
-    reset_rng = jax.random.split(_rng, config.num_envs * num_devices).reshape((num_devices, config.num_envs, 2))
+    reset_rng = jax.random.split(_rng, config.num_envs * config.num_devices).reshape((config.num_devices, config.num_envs, 2))
     env_state = init(reset_rng)
 
     steps = 0
     terminated_count = 0
     rng, _rng = jax.random.split(rng)
-    rngs = jax.random.split(_rng, num_devices)
+    rngs = jax.random.split(_rng, config.num_devices)
     runner_state = (
         jax.device_put_replicated(params, devices),
         jax.device_put_replicated(opt_state, devices),
@@ -249,8 +248,9 @@ def train(config, rng):
 
 if __name__ == "__main__":
     config = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
-    config.num_updates = config.total_timesteps // config.num_steps // config.num_envs
-    config.num_minibatches = config.num_envs * config.num_steps // config.minibatch_size
+    config.num_devices = len(jax.devices())
+    config.num_updates = config.total_timesteps // config.num_steps // config.num_envs // config.num_devices
+    config.num_minibatches = config.num_envs * config.num_steps // config.minibatch_size // config.num_devices
     config.num_eval_step = config.num_updates // config.num_evals
     print(config)
     wandb.init(
