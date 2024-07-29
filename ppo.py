@@ -90,6 +90,10 @@ class Transition(NamedTuple):
 
 
 def train(config, rng):
+    devices = jax.local_devices()
+    num_devices = len(devices)
+    print(f"num_devices: {num_devices}")
+
     env = BridgeBidding(config.train_dataset)
 
     actor_forward_pass = make_forward_pass(
@@ -122,7 +126,7 @@ def train(config, rng):
         team2_model_type=config.actor_model_type,
         num_eval_envs=config.num_eval_envs,
     )
-    jit_simple_duplicate_evaluate = jax.jit(simple_duplicate_evaluate)
+    jit_simple_duplicate_evaluate = jax.pmap(simple_duplicate_evaluate)
 
     # INIT UPDATE FUNCTION
 
@@ -131,15 +135,16 @@ def train(config, rng):
         model_type=config.actor_model_type,
     )
 
-    init = jax.jit(jax.vmap(env.init))
-    roll_out = jax.jit(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
-    calc_gae = jax.jit(make_calc_gae(config, actor_forward_pass))
-    update_step = jax.jit(
-        make_update_step(config, actor_forward_pass, optimizer=optimizer)
+    init = jax.pmap(jax.vmap(env.init))
+    roll_out = jax.pmap(make_roll_out(config, env, actor_forward_pass, opp_forward_pass))
+    calc_gae = jax.pmap(make_calc_gae(config, actor_forward_pass))
+    update_step = jax.pmap(
+        make_update_step(config, actor_forward_pass, optimizer=optimizer),
+        axis_name="i"
     )
 
     rng, _rng = jax.random.split(rng)
-    reset_rng = jax.random.split(_rng, config.num_envs)
+    reset_rng = jax.random.split(_rng, config.num_envs * num_devices).reshape((num_devices, config.num_envs, 2))
     env_state = init(reset_rng)
 
     steps = 0
@@ -159,19 +164,25 @@ def train(config, rng):
     with open(config.eval_opp_model_path, "rb") as f:
         eval_opp_params = pickle.load(f)
     print("start training")
+
+    # duplicate for pmap
+    runner_state, eval_opp_params = jax.device_put_replicated((runner_state, eval_opp_params), devices)
+    eval_rng = jax.random.split(eval_rng, num_devices)
+
     for i in range(config.num_updates + 1):
         print(f"--------------iteration {i}---------------")
         # save model
         if i % config.save_model_interval == 0:
             if config.save_model:
                 with open(os.path.join(save_model_path, f"params-{i:08}.pkl"), "wb") as writer:
-                    pickle.dump(runner_state[0], writer)
+                    params_0 = jax.tree_util.tree_map(lambda x: x[0], runner_state[0])
+                    pickle.dump(params_0, writer)
 
         # eval
         if i % config.num_eval_step == 0:
             time_du_sta = time.time()
             log_info, _, _ = jit_simple_duplicate_evaluate(runner_state[0], eval_opp_params, eval_rng)
-            eval_log = {"eval/IMP_reward": log_info[0].item(), "eval/IMP_SE": log_info[1].item()}
+            eval_log = {"eval/IMP_reward": log_info[0].mean().item(), "eval/IMP_SE": log_info[1].mean().item()}
             time_du_end = time.time()
             print(f"duplicate eval time: {time_du_end-time_du_sta}")
 
@@ -181,9 +192,11 @@ def train(config, rng):
             print(f"opposite params: {params_path}")
             with open(os.path.join(save_model_path, params_path), "rb") as f:
                 opp_params = pickle.load(f)
+                opp_params = jax.device_put(opp_params, devices)
         else:
             print("opposite params: latest")
             opp_params = runner_state[0]
+            opp_params = jax.device_put(opp_params, devices)
 
         time1 = time.time()
         runner_state, traj_batch = roll_out(
@@ -216,18 +229,18 @@ def train(config, rng):
 
         # make log
         log = {
-            "train/total_loss": float(total_loss.item()),
-            "train/value_loss": float(value_loss.item()),
-            "train/loss_actor": float(loss_actor.item()),
-            "train/illegal_action_prob_sum": float(illegal_action_prob_sum.item()),
-            "train/policy_entropy": float(entropy.item()),
-            "train/clipflacs": float(clipflacs.item()),
-            "train/approx_kl": float(approx_kl.item()),
-            "train/ix0": jnp.sum(traj_batch.step_ix.flatten() % 4 == 0).sum().item(),
-            "train/ix1": jnp.sum(traj_batch.step_ix.flatten() % 4 == 1).sum().item(),
-            "train/ix2": jnp.sum(traj_batch.step_ix.flatten() % 4 == 2).sum().item(),
-            "train/ix3": jnp.sum(traj_batch.step_ix.flatten() % 4 == 3).sum().item(),
-            "board_num": int(runner_state[4]),
+            "train/total_loss": float(total_loss.mean().item()),
+            "train/value_loss": float(value_loss.mean().item()),
+            "train/loss_actor": float(loss_actor.mean().item()),
+            "train/illegal_action_prob_sum": float(illegal_action_prob_sum.mean().item()),
+            "train/policy_entropy": float(entropy.mean().item()),
+            "train/clipflacs": float(clipflacs.mean().item()),
+            "train/approx_kl": float(approx_kl.mean().item()),
+            "train/ix0": jnp.sum(traj_batch.step_ix.flatten() % 4 == 0).sum().mean().item(),
+            "train/ix1": jnp.sum(traj_batch.step_ix.flatten() % 4 == 1).sum().mean().item(),
+            "train/ix2": jnp.sum(traj_batch.step_ix.flatten() % 4 == 2).sum().mean().item(),
+            "train/ix3": jnp.sum(traj_batch.step_ix.flatten() % 4 == 3).sum().mean().item(),
+            "board_num": int(runner_state[4].sum().item()),
             "steps": steps,
         }
         print(log)
@@ -235,10 +248,6 @@ def train(config, rng):
             log = {**log, **eval_log}
         wandb.log(log)
     
-    if config.save_model:
-        with open(os.path.join(save_model_path, f"params-{i + 1:08}.pkl"), "wb") as writer:
-            pickle.dump(runner_state[0], writer)
-
 
 if __name__ == "__main__":
     config = PPOConfig(**OmegaConf.to_object(OmegaConf.from_cli()))
