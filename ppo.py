@@ -196,7 +196,6 @@ def train(config, rng):
         else:
             print("opposite params: latest")
             opp_params = runner_state[0]
-            opp_params = jax.device_put_replicated(opp_params, devices)
 
         time1 = time.time()
         runner_state, traj_batch = roll_out(runner_state=runner_state, opp_params=opp_params)
