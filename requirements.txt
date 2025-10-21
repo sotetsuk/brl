@@ -7,4 +7,3 @@ wandb
 omegaconf
 pydantic
 pgx
-[:~/pye
