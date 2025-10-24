@@ -107,6 +107,7 @@ def make_update_step(config, actor_forward_pass, optimizer):
                 loss_info, grads = grad_fn(
                     params, traj_batch, advantages, targets
                 )  # DONE
+                grads = jax.lax.pmean(grads, axis_name="i")
                 updates, opt_state = optimizer.update(grads, opt_state)
                 params = optax.apply_updates(params, updates)  # DONE
                 loss_info = jax.tree_map(jnp.mean, loss_info)
